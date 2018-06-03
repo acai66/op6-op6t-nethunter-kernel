@@ -375,10 +375,6 @@ struct hap_chip {
 	bool				auto_res_err_recovery_hw;
 	bool				vcc_pon_enabled;
 	int				vmax_override;
-	u32				vmax_mv_strong;
-	u32				vmax_mv_call;
-	u32				vmax_mv_user;
-	u32				min_time_strong;
 };
 
 struct hap_chip *gchip;
@@ -1904,11 +1900,12 @@ static ssize_t qpnp_haptics_store_vmax(struct device *dev,
 	rc = kstrtoint(buf, 10, &data);
 	if (rc < 0)
 		return rc;
-	if (chip->test_mode)
-		data = 2900;
 
 	if (chip->vmax_override)
 		return count;
+
+	if (chip->test_mode)
+		data = 2900;
 
 	old_vmax_mv = chip->vmax_mv;
 	chip->vmax_mv = data;
@@ -1927,7 +1924,7 @@ static ssize_t qpnp_haptics_show_vmax_mv_user(struct device *dev,
 	struct led_classdev *cdev = dev_get_drvdata(dev);
 	struct hap_chip *chip = container_of(cdev, struct hap_chip, cdev);
 
-	return snprintf(buf, PAGE_SIZE, "%d\n", chip->vmax_mv_user);
+	return snprintf(buf, PAGE_SIZE, "%d\n", chip->vmax_mv);
 }
 
 static ssize_t qpnp_haptics_store_vmax_mv_user(struct device *dev,
@@ -1941,79 +1938,16 @@ static ssize_t qpnp_haptics_store_vmax_mv_user(struct device *dev,
 	if (rc < 0)
 		return rc;
 
-	old_vmax_mv = chip->vmax_mv_user;
-	chip->vmax_mv_user = data;
-	rc = qpnp_haptics_vmax_config(chip, chip->vmax_mv_user, false);
+	old_vmax_mv = chip->vmax_mv;
+	chip->vmax_mv = data;
+	rc = qpnp_haptics_vmax_config(chip, chip->vmax_mv, false);
 	if (rc < 0) {
-		chip->vmax_mv_user = old_vmax_mv;
+		chip->vmax_mv = old_vmax_mv;
 		return rc;
 	}
 
 	return count;
 }
-
-static ssize_t qpnp_haptics_show_vmax_mv_strong(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct led_classdev *cdev = dev_get_drvdata(dev);
-	struct hap_chip *chip = container_of(cdev, struct hap_chip, cdev);
-
-	return snprintf(buf, PAGE_SIZE, "%d\n", chip->vmax_mv_strong);
-}
-
-static ssize_t qpnp_haptics_store_vmax_mv_strong(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct led_classdev *cdev = dev_get_drvdata(dev);
-	struct hap_chip *chip = container_of(cdev, struct hap_chip, cdev);
-	int data, rc, old_vmax_mv;
-
-	rc = kstrtoint(buf, 10, &data);
-	if (rc < 0)
-		return rc;
-
-	old_vmax_mv = chip->vmax_mv_strong;
-	chip->vmax_mv_strong = data;
-	rc = qpnp_haptics_vmax_config(chip, chip->vmax_mv_strong, false);
-	if (rc < 0) {
-		chip->vmax_mv_strong = old_vmax_mv;
-		return rc;
-	}
-
-	return count;
-}
-
-static ssize_t qpnp_haptics_show_vmax_mv_call(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct led_classdev *cdev = dev_get_drvdata(dev);
-	struct hap_chip *chip = container_of(cdev, struct hap_chip, cdev);
-
-	return snprintf(buf, PAGE_SIZE, "%d\n", chip->vmax_mv_call);
-}
-
-static ssize_t qpnp_haptics_store_vmax_mv_call(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct led_classdev *cdev = dev_get_drvdata(dev);
-	struct hap_chip *chip = container_of(cdev, struct hap_chip, cdev);
-	int data, rc, old_vmax_mv;
-
-	rc = kstrtoint(buf, 10, &data);
-	if (rc < 0)
-		return rc;
-
-	old_vmax_mv = chip->vmax_mv_call;
-	chip->vmax_mv_call = data;
-	rc = qpnp_haptics_vmax_config(chip, chip->vmax_mv_call, false);
-	if (rc < 0) {
-		chip->vmax_mv_call = old_vmax_mv;
-		return rc;
-	}
-
-	return count;
-}
-
 
 static ssize_t qpnp_haptics_show_vmax_override(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -2138,8 +2072,6 @@ static struct device_attribute qpnp_haptics_attrs[] = {
 	__ATTR(vmax_mv, 0664, qpnp_haptics_show_vmax, qpnp_haptics_store_vmax),
 	__ATTR(vmax_override, 0664, qpnp_haptics_show_vmax_override, qpnp_haptics_store_vmax_override),
 	__ATTR(vmax_mv_user, 0664, qpnp_haptics_show_vmax_mv_user, qpnp_haptics_store_vmax_mv_user),
-	__ATTR(vmax_mv_strong, 0664, qpnp_haptics_show_vmax_mv_strong, qpnp_haptics_store_vmax_mv_strong),
-	__ATTR(vmax_mv_call, 0664, qpnp_haptics_show_vmax_mv_call, qpnp_haptics_store_vmax_mv_call),
 	__ATTR(dump_regs, 0664, qpnp_hap_dump_regs_show, NULL),
 	__ATTR(rf_hz, 0664, qpnp_haptics_show_rf_hz, qpnp_haptics_store_rf_hz),
 	__ATTR(lra_auto_mode, 0664, qpnp_haptics_show_lra_auto_mode,
