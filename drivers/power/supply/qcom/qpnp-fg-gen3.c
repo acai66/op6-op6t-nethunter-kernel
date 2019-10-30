@@ -4029,6 +4029,35 @@ static int fg_psy_get_property(struct power_supply *psy,
 	int rc = 0;
 
 	switch (psp) {
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+	case POWER_SUPPLY_PROP_RESISTANCE_ID:
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
+	case POWER_SUPPLY_PROP_CYCLE_COUNT_ID:
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_SOC_REPORTING_READY:
+		/* These props don't require a fg query; don't ratelimit them */
+	case POWER_SUPPLY_PROP_CAPACITY:
+	case POWER_SUPPLY_PROP_STATUS:
+		/* These props affect interactive experience in user space */
+		break;
+	default:
+		if (!sd->last_req_expires)
+			break;
+
+		if (usb_psy_initialized(chip))
+			power_supply_get_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_TYPEC_MODE, &typec_sts);
+
+		if (typec_sts.intval == POWER_SUPPLY_TYPEC_NONE &&
+			time_before(jiffies, sd->last_req_expires)) {
+			*pval = sd->val;
+			return 0;
+		}
+		break;
+	}
+
+	switch (psp) {
 	case POWER_SUPPLY_PROP_CAPACITY:
 /* david.liu@bsp, 20171023 Battery & Charging porting */
 		if (!get_extern_fg_regist_done())
