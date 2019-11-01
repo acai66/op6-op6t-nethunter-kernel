@@ -10,7 +10,12 @@
 #include <linux/moduleparam.h>
 #include <linux/oom.h>
 #include <linux/sort.h>
-#include <linux/vmpressure.h>
+#include <linux/version.h>
+
+/* The sched_param struct is located elsewhere in newer kernels */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
+#include <uapi/linux/sched/types.h>
+#endif
 
 /* The minimum number of pages to free per reclaim */
 #define MIN_FREE_PAGES (CONFIG_ANDROID_SIMPLE_LMK_MINFREE * SZ_1M / PAGE_SIZE)
@@ -218,37 +223,14 @@ static void scan_and_kill(unsigned long pages_needed)
 			vtsk->signal->oom_score_adj,
 			victim->size << (PAGE_SHIFT - 10));
 
-		/* Accelerate the victim's death by forcing the kill signal */
-		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, vtsk, true);
+		/* Send kill signal to the victim */
+		send_sig(SIGKILL, vtsk, 0);
 
-		/* Mark the thread group dead so that other kernel code knows */
-		rcu_read_lock();
-		for_each_thread(vtsk, t)
-			set_tsk_thread_flag(t, TIF_MEMDIE);
-		rcu_read_unlock();
-
-		/* Elevate the victim to SCHED_RR with zero RT priority */
-		sched_setscheduler_nocheck(vtsk, SCHED_RR, &sched_zero_prio);
-
-		/* Allow the victim to run on any CPU. This won't schedule. */
-		set_cpus_allowed_ptr(vtsk, cpu_all_mask);
-
-		/* Finally release the victim's task lock acquired earlier */
 		task_unlock(vtsk);
 	}
 
-	/* Wait until all the victims die or until the timeout is reached */
-	ret = wait_for_completion_timeout(&reclaim_done, RECLAIM_EXPIRES);
-	write_lock(&mm_free_lock);
-	if (!ret) {
-		/* Extra clean-up is needed when the timeout is hit */
-		reinit_completion(&reclaim_done);
-		for (i = 0; i < nr_to_kill; i++)
-			victims[i].mm = NULL;
-	}
-	victims_to_kill = 0;
-	nr_killed = (atomic_t)ATOMIC_INIT(0);
-	write_unlock(&mm_free_lock);
+	/* Wait until all the victims die */
+	wait_for_completion(&reclaim_done);
 }
 
 static int simple_lmk_reclaim_thread(void *data)
