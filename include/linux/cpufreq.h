@@ -537,7 +537,7 @@ unsigned int cpufreq_driver_resolve_freq(struct cpufreq_policy *policy,
 int cpufreq_register_governor(struct cpufreq_governor *governor);
 void cpufreq_unregister_governor(struct cpufreq_governor *governor);
 
-======= /* CPUFREQ DEFAULT GOVERNOR */ /*
+ /* CPUFREQ DEFAULT GOVERNOR */ /*
  * Performance governor is fallback governor if any other gov failed to auto
  * load due latency restrictions
  */
