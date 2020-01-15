@@ -152,6 +152,7 @@ static void sugov_update_commit(struct sugov_policy *sg_policy, u64 time,
 		/* Don't cache a raw freq that didn't become next_freq */
 		sg_policy->cached_raw_freq = 0;
 		return;
+	}
 
 	sg_policy->next_freq = next_freq;
 	sg_policy->last_freq_update_time = time;
@@ -1085,3 +1086,4 @@ static int __init sugov_register(void)
 	return cpufreq_register_governor(&blu_schedutil_gov);
 }
 fs_initcall(sugov_register);
+
