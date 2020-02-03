@@ -817,7 +817,6 @@ config QPNP_MISC
 config BOOTLOADER_LOG
 	tristate "show bootloader log"
 	depends on OF
-	default y
 	help
 	  show bootloader log in kernel
 
