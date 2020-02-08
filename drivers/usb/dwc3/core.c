@@ -1090,9 +1090,6 @@ int dwc3_core_pre_init(struct dwc3 *dwc)
 			ret = -ENOMEM;
 		}
 	}
-
-	/* de-assert DRVVBUS for HOST and OTG mode */
-	dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
 }
 
 #define DWC3_ALIGN_MASK		(16 - 1)
