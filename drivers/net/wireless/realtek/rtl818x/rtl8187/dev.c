@@ -251,8 +251,17 @@ static void rtl8187_tx(struct ieee80211_hw *dev,
 	flags |= RTL818X_TX_DESC_FLAG_NO_ENC;
 
 	flags |= ieee80211_get_tx_rate(dev, info)->hw_value << 24;
+
+	// When this flag is set the firmware waits untill ALL fragments have
+	// reached the USB device. Then it sends the first fragment and waits
+	// for ACKS's. Of course in monitor mode it won't detect these ACK's.
 	if (ieee80211_has_morefrags(tx_hdr->frame_control))
-		flags |= RTL818X_TX_DESC_FLAG_MOREFRAG;
+	{
+		// If info->control.vif is NULL it's most likely in monitor mode
+		if (likely(info->control.vif != NULL && info->control.vif->type != NL80211_IFTYPE_MONITOR)) {
+			flags |= RTL818X_TX_DESC_FLAG_MOREFRAG;
+		}
+	}
 
 	/* HW will perform RTS-CTS when only RTS flags is set.
 	 * HW will perform CTS-to-self when both RTS and CTS flags are set.
@@ -1117,6 +1126,7 @@ static int rtl8187_add_interface(struct ieee80211_hw *dev,
 		goto exit;
 
 	switch (vif->type) {
+	case NL80211_IFTYPE_AP:
 	case NL80211_IFTYPE_STATION:
 	case NL80211_IFTYPE_ADHOC:
 		break;
@@ -1608,7 +1618,8 @@ static int rtl8187_probe(struct usb_interface *intf,
 			priv->rfkill_mask = RFKILL_MASK_8198;
 	}
 	dev->vif_data_size = sizeof(struct rtl8187_vif);
-	dev->wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION) |
+	dev->wiphy->interface_modes = BIT(NL80211_IFTYPE_AP) |
+				      BIT(NL80211_IFTYPE_STATION) |
 				      BIT(NL80211_IFTYPE_ADHOC) ;
 
 	if ((id->driver_info == DEVICE_RTL8187) && priv->is_rtl8187b)
