@@ -8,7 +8,7 @@
 obj-y				+= irqchip/
 obj-y				+= bus/
 
-obj-$(CONFIG_RTL8821AU)	  += rtl8812au/
+obj-$(CONFIG_88XXAU)	  += rtl8812au/
 obj-$(CONFIG_RTL8188EU)	  += rtl8188eus/
 
 
