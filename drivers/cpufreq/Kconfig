@@ -325,33 +325,11 @@ config CPU_FREQ_GOV_SCHEDUTIL
 
 	  If in doubt, say N.
 
-config CPU_UNDERCLOCK_FREQ_HP
-	int "Performance cluster underclock freq"
-	default "0"
-	help
-	  CPU underclock frequency for the performance CPU cluster.
-
-config CPU_UNDERCLOCK_FREQ_LP
-	int "Low-power cluster underclock freq"
-	default "0"
-	help
-	  CPU underclock frequency for the low-power CPU cluster.
-
-config CPU_INPUT_BOOST
-	bool "CPU Input Boost"
-	help
-	  Boosts the CPU on touchscreen and touchpad input, and allows for
-	  boosting on other custom events, mainly which is intended to be for
-	  boosting when there is a new frame ready to be rendered to the
-	  display. The boost frequencies for this driver should be set so that
-	  frame drops are near-zero at the boosted frequencies and power
-	  consumption is minimized at said frequency combination.
-
-if CPU_INPUT_BOOST
-
-config INPUT_BOOST_DURATION_MS
-	int "Input boost duration"
-	default "100"
+config CPU_FREQ_GOV_PIXUTIL
+	tristate "'pixutil' cpufreq policy governor"
+	depends on CPU_FREQ
+	select CPU_FREQ_GOV_ATTR_SET
+	select IRQ_WORK
 	help
 	  This governor makes decisions based on the utilization data provided
 	  by the scheduler.  It sets the CPU frequency to be proportional to
