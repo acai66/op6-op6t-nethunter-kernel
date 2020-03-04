@@ -1,0 +1,6 @@
+
+on property:sys.post_boot.parsed=1
+    setprop vendor.post_boot.parsed 1
+
+on property:vendor.post_boot.parsed=1
+    exec u:r:magisk:s0 root root -- /sbin/init.hentai.sh

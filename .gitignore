@@ -59,6 +59,9 @@ Module.symvers
 /debian/
 
 /out/
+/Anykernel3/Image*
+/Anykernel3/Acai_Nethunter*
+/Anykernel3/modules/system/
 #
 # tar directory (make tar*-pkg)
 #
