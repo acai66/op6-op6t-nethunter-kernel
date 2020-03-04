@@ -1,3 +1,19 @@
+### Kali Nethunter kernel for Oneplus 6/6T
+
+- [Releases](https://github.com/acai66/Acai-Oneplus6-or-Oneplus6T-Nethunter-Kernel)
+
+### Credits
+
+- [Boos4721](https://github.com/Boos4721/op6_kernel) for kernel source
+- [fasheng](https://github.com/fasheng) for HID patches
+- [lazerl0rd](https://github.com/pelya/android-keyboard-gadget/blob/master/patches/existing_tested/by-generic-kernel-version/generic_kernel_4.9.patch) for HID patches
+- [aircrack-ng](https://github.com/aircrack-ng) for wifi patches
+- [osm0sis](https://github.com/osm0sis/AnyKernel3) for AnyKernel3
+- [johanlike(DJY)](https://github.com/johanlike) for help
+- [kimocoder](https://github.com/kimocoder) for help
+
+
+---
         Linux kernel release 4.x <http://kernel.org/>
 
 These are the release notes for Linux version 4.  Read them carefully,
