@@ -1,3 +1,4 @@
+  
 /*
  * Simple IO scheduler
  * Based on Noop, Deadline and V(R) IO schedulers.
@@ -60,7 +61,7 @@ sio_merged_requests(struct request_queue *q, struct request *rq,
 	if (!list_empty(&rq->queuelist) && !list_empty(&next->queuelist)) {
 		if (time_before((unsigned long)next->fifo_time, (unsigned long)rq->fifo_time)) {
 			list_move(&rq->queuelist, &next->queuelist);
-			rq_set_fifo_time(rq, rq_fifo_time(next));
+			rq->fifo_time = next->fifo_time;
 		}
 	}
 
@@ -79,7 +80,7 @@ sio_add_request(struct request_queue *q, struct request *rq)
 	 * Add request to the proper fifo list and set its
 	 * expire time.
 	 */
-	rq_set_fifo_time(rq, jiffies + sd->fifo_expire[sync][data_dir]);
+	rq->fifo_time = jiffies + sd->fifo_expire[sync][data_dir];
 	list_add_tail(&rq->queuelist, &sd->fifo_list[sync][data_dir]);
 }
 
@@ -409,5 +410,4 @@ MODULE_AUTHOR("Miguel Boton");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Simple IO scheduler");
 MODULE_VERSION("0.2");
-
 
