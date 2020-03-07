@@ -1176,7 +1176,9 @@ static void sugov_limits(struct cpufreq_policy *policy)
 
 	sg_policy->need_freq_update = true;
 }
-
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDHORIZON
+static
+#endif
 static struct cpufreq_governor schedhorizon_gov = {
 	.name = "schedhorizon",
 	.owner = THIS_MODULE,
@@ -1186,13 +1188,6 @@ static struct cpufreq_governor schedhorizon_gov = {
 	.stop = sugov_stop,
 	.limits = sugov_limits,
 };
-
-#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDHORIZON
-struct cpufreq_governor *cpufreq_default_governor(void)
-{
-	return &schedhorizon_gov;
-}
-#endif
 
 static int __init sugov_register(void)
 {
