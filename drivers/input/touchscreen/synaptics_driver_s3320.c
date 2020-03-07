@@ -1,3 +1,18 @@
+/************************************************************************************
+ ** File: - /android/kernel/drivers/input/touchscreen/synaptic_s3320.c
+ ** Copyright (C), 2008-2012, OEM Mobile Comm Corp., Ltd
+ **
+ ** Description:
+ **      touch panel driver for synaptics
+ **      can change MAX_POINT_NUM value to support multipoint
+ ** Version: 1.0
+ ** Date created: 10:49:46,18/01/2012
+ ** Author: Yixue.Ge@BasicDrv.TP
+ **
+ ** --------------------------- Revision History: --------------------------------
+ ** 	<author>	<data>			<desc>
+ **  morgan.gu@BSP.TP modified for oem 2017-10-30 s3706 tp_driver
+ ************************************************************************************/
 #include <linux/of_gpio.h>
 #include <linux/irq.h>
 #include <linux/i2c.h>
@@ -52,6 +67,9 @@
 #include "synaptics_dsx_core.h"
 #include <linux/oneplus/boot_mode.h>
 #include <linux/pm_qos.h>
+
+#include <linux/moduleparam.h>
+
 /*------------------------------------------------Global Define--------------------------------------------*/
 
 #define TP_UNKNOWN 0
@@ -176,14 +194,19 @@ static int gesture_switch = 0;
 //ruanbanmao@BSP add for tp gesture 2015-05-06, end
 #endif
 
+bool haptic_feedback_disable = false;
+module_param(haptic_feedback_disable, bool, 0644);
+
+void qpnp_hap_ignore_next_request(void);
+
 /*********************for Debug LOG switch*******************/
-#define TPD_ERR(a, arg...)  pr_err(TPD_DEVICE ": " a, ##arg)
-#define TPDTM_DMESG(a, arg...)  printk(TPD_DEVICE ": " a, ##arg)
+#define TPD_ERR(a, arg...)  pr_debug(TPD_DEVICE ": " a, ##arg)
+#define TPDTM_DMESG(a, arg...)  pr_debug(TPD_DEVICE ": " a, ##arg)
 
 #define TPD_DEBUG(a,arg...)\
 	do{\
 		if(tp_debug)\
-		pr_err(TPD_DEVICE ": " a,##arg);\
+		pr_debug(TPD_DEVICE ": " a,##arg);\
 	}while(0)
 
 /*---------------------------------------------Global Variable----------------------------------------------*/
@@ -1513,6 +1536,9 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 		input_sync(ts->input_dev);
 		input_report_key(ts->input_dev, keyCode, 0);
 		input_sync(ts->input_dev);
+
+		if (haptic_feedback_disable)
+			qpnp_hap_ignore_next_request();
 	}else{
 
 		ret = i2c_smbus_read_i2c_block_data( ts->client, F12_2D_CTRL20, 3, &(reportbuf[0x0]) );
@@ -1527,7 +1553,7 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 }
 #endif
 /***************end****************/
-static char prlog_count = 0;
+
 #ifdef REPORT_2D_PRESSURE
 static unsigned char pres_value = 1;
 #endif
@@ -1725,8 +1751,6 @@ void int_touch(void)
 	last_status = current_status & 0x02;
 
 	if (finger_num == 0/* && last_status && (check_key <= 1)*/) {
-		if (3 == (++prlog_count % 6))
-			TPD_ERR("all finger up\n");
 		if (ts->project_version == 0x03) {
 			if ((ts->unlock_succes == 1) && (need_reset ==1) && (ts->is_suspended == 0)) {
 				TPD_DEBUG("touch hold reset %d\n", need_reset);
@@ -4666,7 +4690,7 @@ static ssize_t key_switch_read_func(struct file *file, char __user *user_buf, si
 	TPD_ERR("%s left:%s right:%s\n", __func__,
 		    key_switch?"key_back":"key_appselect",
 		    key_switch?"key_appselect":"key_back");
-	ret = snprintf(page, PAGE_SIZE, "key_switch left:%s right:%s\n",
+	ret = snprintf(page, PAGESIZE, "key_switch left:%s right:%s\n",
 		    key_switch?"key_back":"key_appselect",
 		    key_switch?"key_appselect":"key_back");
 	ret = simple_read_from_buffer(user_buf, count, ppos, page, strlen(page));
@@ -6449,3 +6473,4 @@ module_exit(tpd_driver_exit);
 
 MODULE_DESCRIPTION("Synaptics S3203 Touchscreen Driver");
 MODULE_LICENSE("GPL");
+
