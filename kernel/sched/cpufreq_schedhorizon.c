@@ -680,6 +680,9 @@ static ssize_t up_rate_limit_us_store(struct gov_attr_set *attr_set,
 	struct sugov_policy *sg_policy;
 	unsigned int rate_limit_us;
 
+	/* Don't let userspace change this */
+	return count;
+
 	if (kstrtouint(buf, 10, &rate_limit_us))
 		return -EINVAL;
 
@@ -699,6 +702,9 @@ static ssize_t down_rate_limit_us_store(struct gov_attr_set *attr_set,
 	struct sugov_tunables *tunables = to_sugov_tunables(attr_set);
 	struct sugov_policy *sg_policy;
 	unsigned int rate_limit_us;
+
+	/* Don't let userspace change this */
+	return count;
 
 	if (kstrtouint(buf, 10, &rate_limit_us))
 		return -EINVAL;
@@ -1048,6 +1054,10 @@ static int sugov_init(struct cpufreq_policy *policy)
 	tunables->down_rate_limit_us = 0;
 	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	tunables->hispeed_freq = 0;
+
+	/* Hard-code some sane rate-limit values */
+	tunables->up_rate_limit_us = 500;
+	tunables->down_rate_limit_us = 20000;
 
 	policy->governor_data = sg_policy;
 	sg_policy->tunables = tunables;
