@@ -614,7 +614,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_rdi(
 	ife_out_res->hw_res[0] = vfe_acquire.vfe_out.rsrc_node;
 	ife_out_res->is_dual_vfe = 0;
 	ife_out_res->res_id = vfe_out_res_id;
-	ife_out_res->res_type = CAM_ISP_RESOURCE_VFE_OUT;
+	ife_out_res->res_type = (enum cam_ife_hw_mgr_res_type)CAM_ISP_RESOURCE_VFE_OUT;
 	ife_src_res->child[ife_src_res->num_children++] = ife_out_res;
 
 	return 0;
@@ -702,7 +702,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_out_pixel(
 				ife_out_res->hw_res[j]->res_id);
 
 		}
-		ife_out_res->res_type = CAM_ISP_RESOURCE_VFE_OUT;
+		ife_out_res->res_type = (enum cam_ife_hw_mgr_res_type)CAM_ISP_RESOURCE_VFE_OUT;
 		ife_out_res->res_id = out_port->res_type;
 		ife_out_res->parent = ife_src_res;
 		ife_src_res->child[ife_src_res->num_children++] = ife_out_res;
@@ -815,7 +815,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_src(
 			CAM_ERR(CAM_ISP, "Wrong IFE CSID Resource Node");
 			goto err;
 		}
-		ife_src_res->res_type = vfe_acquire.rsrc_type;
+		ife_src_res->res_type = (enum cam_ife_hw_mgr_res_type)vfe_acquire.rsrc_type;
 		ife_src_res->res_id = vfe_acquire.vfe_in.res_id;
 		ife_src_res->is_dual_vfe = csid_res->is_dual_vfe;
 
@@ -990,7 +990,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_ipp(
 	csid_acquire.in_port = in_port;
 	csid_acquire.out_port = in_port->data;
 
-	csid_res->res_type = CAM_ISP_RESOURCE_PIX_PATH;
+	csid_res->res_type = (enum cam_ife_hw_mgr_res_type)CAM_ISP_RESOURCE_PIX_PATH;
 	csid_res->res_id = CAM_IFE_PIX_PATH_RES_IPP;
 	csid_res->is_dual_vfe = in_port->usage_type;
 
@@ -1106,15 +1106,15 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 		if (!cam_ife_hw_mgr_is_rdi_res(out_port->res_type))
 			continue;
 
-			/* get cid resource */
-			rc = cam_ife_mgr_acquire_cid_res(ife_ctx,
-				in_port, &cid_res_id,
-				cam_ife_hw_mgr_get_ife_csid_rdi_res_type(
-				out_port->res_type));
-			if (rc) {
-				CAM_ERR(CAM_ISP,
-					"Acquire IFE CID resource Failed");
-				goto err;
+		/* get cid resource */
+		rc = cam_ife_mgr_acquire_cid_res(ife_ctx,
+			in_port, &cid_res_id,
+			cam_ife_hw_mgr_get_ife_csid_rdi_res_type(
+			out_port->res_type));
+		if (rc) {
+			CAM_ERR(CAM_ISP,
+				"Acquire IFE CID resource Failed");
+			goto err;
 		}
 
 		rc = cam_ife_hw_mgr_get_res(&ife_ctx->free_res_list,
@@ -1175,7 +1175,7 @@ static int cam_ife_hw_mgr_acquire_res_ife_csid_rdi(
 				goto err;
 			}
 
-			csid_res->res_type = CAM_ISP_RESOURCE_PIX_PATH;
+			csid_res->res_type = (enum cam_ife_hw_mgr_res_type)CAM_ISP_RESOURCE_PIX_PATH;
 			csid_res->res_id = csid_acquire.res_id;
 			csid_res->is_dual_vfe = 0;
 			csid_res->hw_res[0] = csid_acquire.node_res;
@@ -1611,7 +1611,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 			cdm_cmd->cmd[i].len = cmd->len;
 		}
 
-		if (cfg->init_packet)
+		if (cfg->request_id == 1)
 			init_completion(&ctx->config_done_complete);
 		CAM_DBG(CAM_ISP, "Submit to CDM");
 		rc = cam_cdm_submit_bls(ctx->cdm_handle, cdm_cmd);
@@ -1621,6 +1621,7 @@ static int cam_ife_mgr_config_hw(void *hw_mgr_priv,
 		}
 
 		if (cfg->init_packet) {
+			init_completion(&ctx->config_done_complete);
 			rc = wait_for_completion_timeout(
 				&ctx->config_done_complete,
 				msecs_to_jiffies(30));
@@ -2167,7 +2168,7 @@ static int cam_ife_mgr_start_hw(void *hw_mgr_priv, void *start_hw_args)
 	CAM_DBG(CAM_ISP, "Exit...(success)");
 	return 0;
 err:
-	stop_hw_method.hw_stop_cmd = CAM_CSID_HALT_IMMEDIATELY;
+	stop_hw_method.hw_stop_cmd = (enum cam_isp_hw_stop_cmd)CAM_CSID_HALT_IMMEDIATELY;
 	stop_args.ctxt_to_hw_map = start_args->ctxt_to_hw_map;
 	stop_args.args = (void *)(&stop_hw_method);
 	cam_ife_mgr_stop_hw(hw_mgr_priv, &stop_args);
