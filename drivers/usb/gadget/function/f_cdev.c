@@ -1661,7 +1661,6 @@ static ssize_t cser_rw_write(struct file *file, const char __user *ubuf,
 		if (gadget->speed == USB_SPEED_SUPER &&
 			func->func_is_suspended) {
 			pr_debug("Calling usb_func_wakeup\n");
-			ret = usb_func_wakeup(func);
 		} else {
 			pr_debug("Calling usb_gadget_wakeup");
 			ret = usb_gadget_wakeup(gadget);

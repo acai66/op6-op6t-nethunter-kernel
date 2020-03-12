@@ -224,13 +224,6 @@ static int gsi_wakeup_host(struct f_gsi *gsi)
 	 * allowed to do so by the host. This is done in order to support non
 	 * fully USB 3.0 compatible hosts.
 	 */
-	if ((gadget->speed == USB_SPEED_SUPER) && (func->func_is_suspended)) {
-		log_event_dbg("%s: Calling usb_func_wakeup", __func__);
-		ret = usb_func_wakeup(func);
-	} else {
-		log_event_dbg("%s: Calling usb_gadget_wakeup", __func__);
-		ret = usb_gadget_wakeup(gadget);
-	}
 
 	if ((ret == -EBUSY) || (ret == -EAGAIN))
 		log_event_dbg("RW delayed due to LPM exit.");
@@ -1825,8 +1818,6 @@ static int queue_notification_request(struct f_gsi *gsi)
 	int ret;
 	unsigned long flags;
 
-	ret = usb_func_ep_queue(&gsi->function, gsi->c_port.notify,
-			   gsi->c_port.notify_req, GFP_ATOMIC);
 	if (ret < 0) {
 		spin_lock_irqsave(&gsi->c_port.lock, flags);
 		gsi->c_port.notify_req_queued = false;
