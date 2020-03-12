@@ -66,6 +66,10 @@ static struct sde_rot_cfg *_rot_offset(enum sde_rot rot,
  * @ptr: private pointer to rotator platform device
  * return: None
  */
+static void _sde_hw_rot_reg_dump(void *ptr)
+{
+	sde_rotator_inline_reg_dump((struct platform_device *) ptr);
+}
 
 /**
  * sde_hw_rot_start - start rotator before any commit

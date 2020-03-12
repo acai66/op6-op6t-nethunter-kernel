@@ -980,4 +980,3 @@ int cam_flash_apply_request(struct cam_req_mgr_apply_request *apply)
 free_resource:
 	return rc;
 }
-
