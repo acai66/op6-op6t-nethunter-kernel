@@ -4680,7 +4680,6 @@ again:
 			pce_dev->intr_cadence = 0;
 			atomic_set(&pce_dev->bunch_cmd_seq, 0);
 			atomic_set(&pce_dev->last_intr_seq, 0);
-			pce_dev->cadence_flag = ~pce_dev->cadence_flag;
 		}
 	}
 
