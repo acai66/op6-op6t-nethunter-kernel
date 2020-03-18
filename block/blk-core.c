@@ -2150,22 +2150,6 @@ bool is_filter_process(struct task_struct *t)
 
 	return false;
 }
-static bool high_prio_for_task(struct task_struct *t)
-{
-	int cur_uid;
-
-	if (!sysctl_fg_io_opt)
-		return false;
-
-	cur_uid = task_uid(t).val;
-	if ((is_fg(cur_uid) && !is_system_uid(t) &&
-		!is_filter_process(t)) ||
-		is_critial_process(t))
-		return true;
-
-	return false;
-}
-
 
 /**
  * submit_bio - submit a bio to the block device layer for I/O
