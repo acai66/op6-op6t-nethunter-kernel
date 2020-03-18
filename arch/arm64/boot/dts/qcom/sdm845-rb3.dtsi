@@ -290,6 +290,11 @@
 
 &pmi8998_fg {
 	qcom,battery-data = <&mtp_batterydata>;
+	status = "disabled";
+};
+
+&bcl_sensor {
+	status = "disabled";
 };
 
 &smb1355_charger_0 {

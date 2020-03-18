@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -3132,7 +3132,8 @@ static int pp_ad_calc_bl(struct msm_fb_data_type *mfd, int bl_in, int *bl_out,
 		return -EPERM;
 	}
 
-	if (!ad->bl_mfd || !ad->bl_mfd->panel_info) {
+	if (!ad->bl_mfd || !ad->bl_mfd->panel_info ||
+		ad->bl_att_lut == NULL) {
 		pr_err("Invalid ad info: bl_mfd = 0x%pK, ad->bl_mfd->panel_info = 0x%pK, bl_att_lut = 0x%pK\n",
 			ad->bl_mfd,
 			(!ad->bl_mfd) ? NULL : ad->bl_mfd->panel_info,

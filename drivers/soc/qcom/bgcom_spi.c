@@ -843,6 +843,7 @@ int bgcom_resume(void *handle)
 	mutex_lock(&bg_resume_mutex);
 	if (bg_spi->bg_state == BGCOM_STATE_ACTIVE)
 		goto unlock;
+	enable_irq(bg_irq);
 	do {
 		if (is_bg_resume(handle)) {
 			bg_spi->bg_state = BGCOM_STATE_ACTIVE;
@@ -857,6 +858,11 @@ unlock:
 	if (retry == MAX_RETRY) {
 		/* BG failed to resume. Trigger BG soft reset. */
 		pr_err("BG failed to resume\n");
+		pr_err("%s: gpio#95 value is: %d\n",
+				__func__, gpio_get_value(95));
+		pr_err("%s: gpio#97 value is: %d\n",
+				__func__, gpio_get_value(97));
+		BUG();
 		bg_soft_reset();
 		return -ETIMEDOUT;
 	}
@@ -1089,8 +1095,6 @@ static int bgcom_pm_resume(struct device *dev)
 	clnt_handle.bg_spi = spi;
 	atomic_set(&bg_is_spi_active, 1);
 	ret = bgcom_resume(&clnt_handle);
-	if (ret == 0)
-		enable_irq(bg_irq);
 	pr_info("Bgcom resumed with : %d\n", ret);
 	return ret;
 }

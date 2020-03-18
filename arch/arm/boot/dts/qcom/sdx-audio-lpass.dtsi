@@ -84,7 +84,7 @@
 
 	compress: qcom,msm-compress-dsp {
 		compatible = "qcom,msm-compress-dsp";
-		qcom,adsp-version = "MDSP 1.2";
+		qcom,adsp-version = "MDSP 2.8";
 	};
 
 	qcom,msm-dai-stub {
@@ -150,6 +150,11 @@
 		incall_music_rx: qcom,msm-dai-q6-incall-music-rx {
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <32773>;
+		};
+
+		incall_music_dl_rx: qcom,msm-dai-q6-incall-music-dl-rx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <32774>;
 		};
 	};
 
@@ -302,6 +307,7 @@
 	};
 
 	prim_slave: prim_slave_pinctrl {
+		status = "disabled";
 		compatible = "qcom,msm-cdc-pinctrl";
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&pri_ws_active_slave
@@ -330,6 +336,7 @@
 	};
 
 	sec_slave: sec_slave_pinctrl {
+		status = "disabled";
 		compatible = "qcom,msm-cdc-pinctrl";
 		pinctrl-names = "aud_active", "aud_sleep";
 		pinctrl-0 = <&sec_ws_active_slave

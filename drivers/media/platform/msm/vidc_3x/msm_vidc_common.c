@@ -347,7 +347,7 @@ int msm_comm_get_inst_load(struct msm_vidc_inst *inst,
 	 * ----------------|----------------------|------------------------|
 	 */
 
-	if (is_realtime_session(inst) &&
+	if (!is_realtime_session(inst) &&
 		(quirks & LOAD_CALC_IGNORE_NON_REALTIME_LOAD)) {
 		if (!inst->prop.fps) {
 			dprintk(VIDC_INFO, "instance:%pK fps = 0\n", inst);
@@ -729,9 +729,8 @@ static void handle_sys_init_done(enum hal_command_response cmd, void *data)
 
 static void put_inst_helper(struct kref *kref)
 {
-	struct msm_vidc_inst *inst = container_of(kref, struct msm_vidc_inst,
-			kref);
-
+	struct msm_vidc_inst *inst = container_of(kref,
+			struct msm_vidc_inst, kref);
 	msm_vidc_destroy(inst);
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -240,6 +240,8 @@ struct smq_invoke_ctx {
 	unsigned int *attrs;
 	uint32_t *crc;
 	uint64_t ctxid;
+	void *handle;
+	const void *ptr;
 };
 
 struct fastrpc_ctx_lst {
@@ -742,15 +744,14 @@ static void fastrpc_mmap_free(struct fastrpc_mmap *map, uint32_t flags)
 	}
 	if (map->flags == ADSP_MMAP_HEAP_ADDR ||
 				map->flags == ADSP_MMAP_REMOTE_HEAP_ADDR) {
-		unsigned long dma_attrs = 0;
 
 		if (me->dev == NULL) {
 			pr_err("failed to free remote heap allocation\n");
 			return;
 		}
 		if (map->phys) {
-			dma_attrs |=
-			DMA_ATTR_SKIP_ZEROING | DMA_ATTR_NO_KERNEL_MAPPING;
+			unsigned long dma_attrs = DMA_ATTR_SKIP_ZEROING |
+						DMA_ATTR_NO_KERNEL_MAPPING;
 			dma_free_attrs(me->dev, map->size, (void *)map->va,
 					(dma_addr_t)map->phys, dma_attrs);
 		}
@@ -2044,7 +2045,8 @@ static int fastrpc_internal_invoke(struct fastrpc_file *fl, uint32_t mode,
 		if (err)
 			goto bail;
 	}
-
+	if (ctx->handle)
+		glink_rx_done(ctx->handle, ctx->ptr, true);
 	PERF(fl->profile, GET_COUNTER(perf_counter, PERF_INVARGS),
 	if (!fl->sctx->smmu.coherent)
 		inv_args(ctx);
@@ -2448,34 +2450,51 @@ static int fastrpc_munmap_on_dsp_rh(struct fastrpc_file *fl, uint64_t phys,
 {
 	int err = 0;
 	struct fastrpc_apps *me = &gfa;
+	int tgid = 0;
 	int destVM[1] = {VMID_HLOS};
 	int destVMperm[1] = {PERM_READ | PERM_WRITE | PERM_EXEC};
 
 	if (flags == ADSP_MMAP_HEAP_ADDR) {
 		struct fastrpc_ioctl_invoke_crc ioctl;
 		struct scm_desc desc = {0};
-		remote_arg_t ra[1];
-		int err = 0;
+		remote_arg_t ra[2];
+
 		struct {
 			uint8_t skey;
 		} routargs;
 
-		ra[0].buf.pv = (void *)&routargs;
-		ra[0].buf.len = sizeof(routargs);
+		if (fl == NULL)
+			goto bail;
+		tgid = fl->tgid;
+		ra[0].buf.pv = (void *)&tgid;
+		ra[0].buf.len = sizeof(tgid);
+		ra[1].buf.pv = (void *)&routargs;
+		ra[1].buf.len = sizeof(routargs);
 
 		ioctl.inv.handle = FASTRPC_STATIC_HANDLE_KERNEL;
-		ioctl.inv.sc = REMOTE_SCALARS_MAKE(7, 0, 1);
+		ioctl.inv.sc = REMOTE_SCALARS_MAKE(9, 1, 1);
 		ioctl.inv.pra = ra;
 		ioctl.fds = NULL;
 		ioctl.attrs = NULL;
 		ioctl.crc = NULL;
-		if (fl == NULL)
-			goto bail;
+
 
 		VERIFY(err, 0 == (err = fastrpc_internal_invoke(fl,
 				FASTRPC_MODE_PARALLEL, 1, &ioctl)));
+		if (err == AEE_EUNSUPPORTED) {
+			remote_arg_t ra[1];
+
+			pr_warn("ADSPRPC:Failed to get security key with updated remote call, falling back to older method");
+			ra[0].buf.pv = (void *)&routargs;
+			ra[0].buf.len = sizeof(routargs);
+			ioctl.inv.sc = REMOTE_SCALARS_MAKE(7, 0, 1);
+			ioctl.inv.pra = ra;
+			VERIFY(err, 0 == (err = fastrpc_internal_invoke(fl,
+				FASTRPC_MODE_PARALLEL, 1, &ioctl)));
+		}
 		if (err)
 			goto bail;
+
 		desc.args[0] = TZ_PIL_AUTH_QDSP6_PROC;
 		desc.args[1] = phys;
 		desc.args[2] = size;
@@ -2703,6 +2722,7 @@ static int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
 	VERIFY(err, (fl && ud));
 	if (err)
 		goto bail;
+	mutex_lock(&fl->map_mutex);
 	mutex_lock(&fl->fl_map_mutex);
 	if (fastrpc_mmap_find(fl, ud->fd, ud->va, ud->len, 0, 0, &map)) {
 		pr_err("adsprpc: mapping not found to unmap %d va %llx %x\n",
@@ -2710,11 +2730,13 @@ static int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
 			(unsigned int)ud->len);
 		err = -1;
 		mutex_unlock(&fl->fl_map_mutex);
+		mutex_unlock(&fl->map_mutex);
 		goto bail;
 	}
 	if (map)
 		fastrpc_mmap_free(map, 0);
 	mutex_unlock(&fl->fl_map_mutex);
+	mutex_unlock(&fl->map_mutex);
 bail:
 	return err;
 }
@@ -2800,11 +2822,10 @@ static void fastrpc_channel_close(struct kref *kref)
 
 	ctx = container_of(kref, struct fastrpc_channel_ctx, kref);
 	cid = ctx - &gcinfo[0];
-	if (!me->glink)
-		smd_close(ctx->chan);
-	else
+	if (me->glink) {
 		fastrpc_glink_close(ctx->chan, cid);
-	ctx->chan = NULL;
+		ctx->chan = NULL;
+	}
 	mutex_unlock(&me->smd_mutex);
 	pr_info("'closed /dev/%s c %d %d'\n", gcinfo[cid].name,
 						MAJOR(me->dev_no), cid);
@@ -2884,11 +2905,13 @@ static void fastrpc_glink_notify_rx(void *handle, const void *priv,
 	if (err)
 		goto bail;
 
+	me->ctxtable[index]->handle = handle;
+	me->ctxtable[index]->ptr = ptr;
+
 	context_notify_user(me->ctxtable[index], rsp->retval);
 bail:
 	if (err)
 		pr_err("adsprpc: invalid response or context\n");
-	glink_rx_done(handle, ptr, true);
 }
 
 static void fastrpc_glink_notify_state(void *handle, const void *priv,
@@ -3415,16 +3438,23 @@ static int fastrpc_channel_open(struct fastrpc_file *fl)
 			if (err)
 				goto bail;
 			VERIFY(err, 0 == fastrpc_glink_open(cid));
+		VERIFY(err,
+			 wait_for_completion_timeout(&me->channel[cid].workport,
+						RPC_TIMEOUT));
 		} else {
-		VERIFY(err, !smd_named_open_on_edge(FASTRPC_SMD_GUID,
+			if (me->channel[cid].chan == NULL) {
+				VERIFY(err, !smd_named_open_on_edge(
+				FASTRPC_SMD_GUID,
 				gcinfo[cid].channel,
 				(smd_channel_t **)&me->channel[cid].chan,
 				(void *)(uintptr_t)cid,
 				smd_event_handler));
-		}
 		VERIFY(err,
 			 wait_for_completion_timeout(&me->channel[cid].workport,
 						RPC_TIMEOUT));
+
+			}
+		}
 		if (err) {
 			me->channel[cid].chan = NULL;
 			goto bail;

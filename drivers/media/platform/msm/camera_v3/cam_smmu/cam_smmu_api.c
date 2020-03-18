@@ -191,7 +191,7 @@ static struct cam_iommu_cb_set iommu_cb_set;
 
 static struct dentry *smmu_dentry;
 
-static bool smmu_fatal_flag;
+static bool smmu_fatal_flag = true;
 
 static enum dma_data_direction cam_smmu_translate_dir(
 	enum cam_smmu_map_dir dir);
@@ -3099,7 +3099,7 @@ int cam_smmu_destroy_handle(int handle)
 		cam_smmu_clean_kernel_buffer_list(idx);
 	}
 
-	if (&iommu_cb_set.cb_info[idx].is_secure) {
+	if (iommu_cb_set.cb_info[idx].is_secure) {
 		if (iommu_cb_set.cb_info[idx].secure_count == 0) {
 			mutex_unlock(&iommu_cb_set.cb_info[idx].lock);
 			return -EPERM;

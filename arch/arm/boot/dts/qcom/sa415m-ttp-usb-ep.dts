@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,4 +28,12 @@
 
 &mss_mem {
 	reg = <0x86400000 0x9300000>;
+};
+
+&ipa_hw {
+	qcom,ipa-config-is-auto;
+};
+
+&usb {
+	qcom,gadget-imod-val = <250>;
 };

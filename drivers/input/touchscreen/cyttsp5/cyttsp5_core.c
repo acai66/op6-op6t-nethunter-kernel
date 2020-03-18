@@ -306,8 +306,12 @@ static void cyttsp5_free_hid_reports_(struct cyttsp5_core_data *cd)
 
 	for (i = 0; i < cd->num_hid_reports; i++) {
 		report = cd->hid_reports[i];
-		for (j = 0; j < report->num_fields; j++)
+		if (!report)
+			continue;
+		for (j = 0; j < report->num_fields; j++) {
 			kfree(report->fields[j]);
+			report->fields[j] = NULL;
+		}
 		kfree(report);
 		cd->hid_reports[i] = NULL;
 	}
@@ -3698,7 +3702,7 @@ static int cyttsp5_core_wake_device_from_easy_wakeup_(
 	rc = cyttsp5_hid_output_exit_easywake_state_(cd,
 			cd->easy_wakeup_gesture, &status);
 	if (rc || status == 0) {
-		dev_err(cd->dev, "%s: failed, rc=%d, status=%d\n",
+		dev_dbg(cd->dev, "%s: failed, rc=%d, status=%d\n",
 			__func__, rc, status);
 		return -EBUSY;
 	}
@@ -3761,6 +3765,7 @@ static int cyttsp5_core_sleep_(struct cyttsp5_core_data *cd)
 	/* Ensure watchdog and startup works stopped */
 	cyttsp5_stop_wd_timer(cd);
 	cancel_work_sync(&cd->startup_work);
+	cancel_work_sync(&cd->resume_work);
 	cyttsp5_stop_wd_timer(cd);
 
 	if (cd->cpdata->flags & CY_CORE_FLAG_POWEROFF_ON_SLEEP)
@@ -4099,7 +4104,7 @@ static int cyttsp5_read_input(struct cyttsp5_core_data *cd)
 				goto read;
 			t = wait_event_timeout(cd->wait_q,
 					(cd->wait_until_wake == 1),
-					msecs_to_jiffies(2000));
+					msecs_to_jiffies(20));
 			if (IS_TMO(t))
 				cyttsp5_queue_startup(cd);
 			goto read;
@@ -4395,7 +4400,8 @@ static int cyttsp5_core_wake_device_(struct cyttsp5_core_data *cd)
 	if (!IS_DEEP_SLEEP_CONFIGURED(cd->easy_wakeup_gesture)) {
 
 		#ifdef CY_GES_WAKEUP
-		return cyttsp5_core_wake_device_from_easy_wakeup_(cd);
+		if (!cyttsp5_core_wake_device_from_easy_wakeup_(cd))
+			return 0;
 		#endif
 	}
 
@@ -4633,7 +4639,7 @@ reset:
 
 	rc = cyttsp5_check_and_deassert_int(cd);
 
-	if (reset || retry != CY_CORE_STARTUP_RETRY_COUNT) {
+	if (rc || retry != CY_CORE_STARTUP_RETRY_COUNT) {
 		/* reset hardware */
 		rc = cyttsp5_reset_and_wait(cd);
 		if (rc < 0) {
@@ -4773,11 +4779,10 @@ reset:
 	/* attention startup */
 	call_atten_cb(cd, CY_ATTEN_STARTUP, 0);
 
+	cyttsp5_start_wd_timer(cd);
 exit:
 	if (!rc)
 		cd->startup_retry_count = 0;
-
-	cyttsp5_start_wd_timer(cd);
 
 	if (!detected)
 		rc = -ENODEV;
@@ -4806,6 +4811,10 @@ static int cyttsp5_startup(struct cyttsp5_core_data *cd, bool reset)
 
 	rc = cyttsp5_startup_(cd, reset);
 
+	/* Wake the waiters for end of startup */
+	if (!rc)
+		wake_up(&cd->wait_q);
+
 	if (release_exclusive(cd, cd->dev) < 0)
 		/* Don't return fail code, mode is already changed. */
 		dev_err(cd->dev, "%s: fail to release exclusive\n", __func__);
@@ -4817,9 +4826,6 @@ exit:
 	mutex_lock(&cd->system_lock);
 	cd->startup_state = STARTUP_NONE;
 	mutex_unlock(&cd->system_lock);
-
-	/* Wake the waiters for end of startup */
-	wake_up(&cd->wait_q);
 
 	return rc;
 }
@@ -5759,6 +5765,8 @@ static struct cyttsp5_core_commands _cyttsp5_core_commands = {
 
 struct cyttsp5_core_commands *cyttsp5_get_commands(void)
 {
+	if (!is_cyttsp5_probe_success)
+		return NULL;
 	return &_cyttsp5_core_commands;
 }
 EXPORT_SYMBOL_GPL(cyttsp5_get_commands);
@@ -5958,6 +5966,19 @@ void *cyttsp5_get_module_data(struct device *dev, struct cyttsp5_module *module)
 }
 EXPORT_SYMBOL(cyttsp5_get_module_data);
 
+static void cyttsp5_resume_work(struct work_struct *work)
+{
+	struct cyttsp5_core_data *cd =  container_of(work,
+		struct cyttsp5_core_data, resume_work);
+
+	#ifdef USE_FB_SUSPEND_RESUME
+	cyttsp5_core_resume(cd->dev);
+	cd->wake_initiated_by_device = 0;
+	#endif
+	call_atten_cb(cd, CY_ATTEN_RESUME, 0);
+	cd->fb_state = FB_ON;
+}
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static void cyttsp5_early_suspend(struct early_suspend *h)
 {
@@ -6001,12 +6022,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 	case FB_BLANK_UNBLANK:
 		dev_dbg(cd->dev, "%s: UNBLANK!\n", __func__);
 		if (cd->fb_state != FB_ON) {
-			#ifdef USE_FB_SUSPEND_RESUME
-			cyttsp5_core_resume(cd->dev);
-			cd->wake_initiated_by_device = 0;
-			#endif
-			call_atten_cb(cd, CY_ATTEN_RESUME, 0);
-			cd->fb_state = FB_ON;
+			schedule_work(&cd->resume_work);
 		}
 		break;
 
@@ -6298,6 +6314,7 @@ int cyttsp5_probe(const struct cyttsp5_bus_ops *ops, struct device *dev,
 
 	/* Initialize works */
 	INIT_WORK(&cd->startup_work, cyttsp5_startup_work_function);
+	INIT_WORK(&cd->resume_work, cyttsp5_resume_work);
 	INIT_WORK(&cd->watchdog_work, cyttsp5_watchdog_work);
 
 	/* Initialize HID specific data */
@@ -6436,12 +6453,13 @@ error_startup_btn:
 	cyttsp5_btn_release(dev);
 error_startup_mt:
 	cyttsp5_mt_release(dev);
+	cyttsp5_free_si_ptrs(cd);
 error_startup:
 	pm_runtime_disable(dev);
 	device_init_wakeup(dev, 0);
 	cancel_work_sync(&cd->startup_work);
+	cancel_work_sync(&cd->resume_work);
 	cyttsp5_stop_wd_timer(cd);
-	cyttsp5_free_si_ptrs(cd);
 	remove_sysfs_interfaces(dev);
 error_attr_create:
 	free_irq(cd->irq, cd);
@@ -6453,7 +6471,7 @@ error_detect:
 	cyttsp5_del_core(dev);
 	dev_set_drvdata(dev, NULL);
 error_power:
-	kfree(cd);
+	cyttsp5_power_init(cd, false);
 error_alloc_data:
 error_no_pdata:
 	dev_err(dev, "%s failed.\n", __func__);
@@ -6491,6 +6509,7 @@ int cyttsp5_release(struct cyttsp5_core_data *cd)
 	pm_runtime_disable(dev);
 
 	cancel_work_sync(&cd->startup_work);
+	cancel_work_sync(&cd->resume_work);
 
 	cyttsp5_stop_wd_timer(cd);
 
