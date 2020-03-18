@@ -45,7 +45,6 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	CAM_DBG(CAM_CCI, "Base address %pK", base);
 
-	mutex_lock(&cci_dev->ref_count_mutex);
 	if (cci_dev->ref_count++) {
 		CAM_DBG(CAM_CCI, "ref_count %d", cci_dev->ref_count);
 		master = c_ctrl->cci_info->cci_i2c_master;
@@ -85,11 +84,9 @@ int cam_cci_init(struct v4l2_subdev *sd,
 				cci_master_info[master].mutex_q[QUEUE_0]);
 			mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		}
-		mutex_unlock(&cci_dev->ref_count_mutex);
 		return 0;
 	}
 
-	mutex_unlock(&cci_dev->ref_count_mutex);
 	ahb_vote.type = CAM_VOTE_ABSOLUTE;
 	ahb_vote.vote.level = CAM_SVS_VOTE;
 	axi_vote.compressed_bw = CAM_CPAS_DEFAULT_AXI_BW;
@@ -181,9 +178,7 @@ reset_complete_failed:
 	cam_soc_util_disable_platform_resource(soc_info, 1, 1);
 
 platform_enable_failed:
-	mutex_lock(&cci_dev->ref_count_mutex);
 	cci_dev->ref_count--;
-	mutex_unlock(&cci_dev->ref_count_mutex);
 	cam_cpas_stop(cci_dev->cpas_handle);
 
 	return rc;
@@ -383,19 +378,15 @@ int cam_cci_soc_release(struct cci_device *cci_dev)
 	struct cam_hw_soc_info *soc_info =
 		&cci_dev->soc_info;
 
-	mutex_lock(&cci_dev->ref_count_mutex);
 	if (!cci_dev->ref_count || cci_dev->cci_state != CCI_STATE_ENABLED) {
 		CAM_ERR(CAM_CCI, "invalid ref count %d / cci state %d",
 			cci_dev->ref_count, cci_dev->cci_state);
-		mutex_unlock(&cci_dev->ref_count_mutex);
 		return -EINVAL;
 	}
 	if (--cci_dev->ref_count) {
 		CAM_DBG(CAM_CCI, "ref_count Exit %d", cci_dev->ref_count);
-		mutex_unlock(&cci_dev->ref_count_mutex);
 		return 0;
 	}
-	mutex_unlock(&cci_dev->ref_count_mutex);
 
 	for (i = 0; i < MASTER_MAX; i++)
 		if (cci_dev->write_wq[i])

@@ -312,7 +312,6 @@ static int cam_cci_platform_probe(struct platform_device *pdev)
 		cpas_parms.client_handle);
 	new_cci_dev->cpas_handle = cpas_parms.client_handle;
 
-	mutex_init(&new_cci_dev->ref_count_mutex);
 	return rc;
 cci_no_resource:
 	kfree(new_cci_dev);

@@ -2007,12 +2007,7 @@ void composite_disconnect(struct usb_gadget *gadget)
 	 */
 	spin_lock_irqsave(&cdev->lock, flags);
 	cdev->suspended = 0;
-	if (cdev->config) {
-		if (gadget->is_chipidea && !cdev->suspended) {
-			spin_unlock_irqrestore(&cdev->lock, flags);
-			msm_do_bam_disable_enable(CI_CTRL);
-			spin_lock_irqsave(&cdev->lock, flags);
-		}
+	if (cdev->config)
 		reset_config(cdev);
 	if (cdev->driver->disconnect)
 		cdev->driver->disconnect(cdev);

@@ -207,58 +207,6 @@ struct cam_hw_flush_args {
 };
 
 /**
- * struct cam_hw_dump_pf_args - Payload for dump pf info command
- *
- * @pf_data:               Debug data for page fault
- * @iova:                  Page fault address
- * @buf_info:              Info about memory buffer where page
- *                               fault occurred
- * @mem_found:             If fault memory found in current
- *                               request
- *
- */
-struct cam_hw_dump_pf_args {
-	struct cam_hw_mgr_dump_pf_data  pf_data;
-	unsigned long                   iova;
-	uint32_t                        buf_info;
-	bool                           *mem_found;
-};
-
-/**
- * struct cam_hw_reset_args -hw reset arguments
- *
- * @ctxt_to_hw_map:        HW context from the acquire
- *
- */
-struct cam_hw_reset_args {
-	void                           *ctxt_to_hw_map;
-};
-
-/* enum cam_hw_mgr_command - Hardware manager command type */
-enum cam_hw_mgr_command {
-	CAM_HW_MGR_CMD_INTERNAL,
-	CAM_HW_MGR_CMD_DUMP_PF_INFO,
-};
-
-/**
- * struct cam_hw_cmd_args - Payload for hw manager command
- *
- * @ctxt_to_hw_map:        HW context from the acquire
- * @cmd_type               HW command type
- * @internal_args          Arguments for internal command
- * @pf_args                Arguments for Dump PF info command
- *
- */
-struct cam_hw_cmd_args {
-	void                               *ctxt_to_hw_map;
-	uint32_t                            cmd_type;
-	union {
-		void                       *internal_args;
-		struct cam_hw_dump_pf_args  pf_args;
-	} u;
-};
-
-/**
  * cam_hw_mgr_intf - HW manager interface
  *
  * @hw_mgr_priv:           HW manager object
@@ -283,7 +231,6 @@ struct cam_hw_cmd_args {
  * @hw_open:               Function pointer for HW init
  * @hw_close:              Function pointer for HW deinit
  * @hw_flush:              Function pointer for HW flush
- * @hw_reset:              Function pointer for HW reset
  *
  */
 struct cam_hw_mgr_intf {
@@ -302,7 +249,6 @@ struct cam_hw_mgr_intf {
 	int (*hw_open)(void *hw_priv, void *fw_download_args);
 	int (*hw_close)(void *hw_priv, void *hw_close_args);
 	int (*hw_flush)(void *hw_priv, void *hw_flush_args);
-	int (*hw_reset)(void *hw_priv, void *hw_reset_args);
 };
 
 #endif /* _CAM_HW_MGR_INTF_H_ */
