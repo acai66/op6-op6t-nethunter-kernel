@@ -8,8 +8,7 @@ static char new_command_line[COMMAND_LINE_SIZE];
 
 static int cmdline_proc_show(struct seq_file *m, void *v)
 {
-	seq_puts(m, new_command_line);
-	seq_putc(m, '\n');
+	seq_printf(m, "%s\n", new_command_line);
 	return 0;
 }
 
@@ -25,26 +24,27 @@ static const struct file_operations cmdline_proc_fops = {
 	.release	= single_release,
 };
 
-static void remove_flag(char *cmd, const char *flag)
+static void patch_flag(char *cmd, const char *flag, const char *val)
 {
-	char *start_addr, *end_addr;
+	size_t flag_len, val_len;
+	char *start, *end;
 
-	/* Ensure all instances of a flag are removed */
-	while ((start_addr = strstr(cmd, flag))) {
-		end_addr = strchr(start_addr, ' ');
-		if (end_addr)
-			memmove(start_addr, end_addr + 1, strlen(end_addr));
-		else
-			*(start_addr - 1) = '\0';
-	}
+	start = strstr(cmd, flag);
+	if (!start)
+		return;
+
+	flag_len = strlen(flag);
+	val_len = strlen(val);
+	end = start + flag_len + strcspn(start + flag_len, " ");
+	memmove(start + flag_len + val_len, end, strlen(end) + 1);
+	memcpy(start + flag_len, val, val_len);
 }
 
-static void remove_safetynet_flags(char *cmd)
+static void patch_safetynet_flags(char *cmd)
 {
-	remove_flag(cmd, "androidboot.enable_dm_verity=");
-	remove_flag(cmd, "androidboot.secboot=");
-	remove_flag(cmd, "androidboot.verifiedbootstate=");
-	remove_flag(cmd, "androidboot.veritymode=");
+	patch_flag(cmd, "androidboot.flash.locked=", "1");
+	patch_flag(cmd, "androidboot.verifiedbootstate=", "green");
+	patch_flag(cmd, "androidboot.veritymode=", "enforcing");
 }
 
 static int __init proc_cmdline_init(void)
@@ -52,10 +52,10 @@ static int __init proc_cmdline_init(void)
 	strcpy(new_command_line, saved_command_line);
 
 	/*
-	 * Remove various flags from command line seen by userspace in order to
-	 * pass SafetyNet CTS check.
+	 * Patch various flags from command line seen by userspace in order to
+	 * pass SafetyNet checks.
 	 */
-	remove_safetynet_flags(new_command_line);
+	patch_safetynet_flags(new_command_line);
 
 	proc_create("cmdline", 0, NULL, &cmdline_proc_fops);
 	return 0;
