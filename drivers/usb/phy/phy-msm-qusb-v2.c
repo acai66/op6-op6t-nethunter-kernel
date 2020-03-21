@@ -836,22 +836,6 @@ static void qusb_phy_enable_ext_pulldown(struct usb_phy *phy)
 }
 
 /*2018/06/28 @BSP Add HW-SW WR to optimize the usb diagram*/
-static void qusb_phy_enable_usb_oe(struct usb_phy *phy)
-{
-	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
-	int ret = 0;
-
-	dev_dbg(phy->dev, "%s\n", __func__);
-
-	if (qphy->pinctrl && qphy->usb_oe_active) {
-		ret = pinctrl_select_state(qphy->pinctrl,
-				qphy->usb_oe_active);
-		if (ret < 0)
-			dev_err(phy->dev,
-				"pinctrl state usb_oe_active select failed\n");
-	}
-}
-
 
 static void qusb_phy_shutdown(struct usb_phy *phy)
 {
