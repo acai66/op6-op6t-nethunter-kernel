@@ -12,15 +12,6 @@ config IOSCHED_NOOP
 	  that do their own scheduling and require only minimal assistance from
 	  the kernel.
 
-config IOSCHED_DEADLINE
-	tristate "Deadline I/O scheduler"
-	default y
-	---help---
-	  The deadline I/O scheduler is simple and compact. It will provide
-	  CSCAN service with FIFO expiration of requests, switching to
-	  a new point in the service tree and doing a batch of IO from there
-	  in case of expiry.
-
 config IOSCHED_SIO
 	tristate "Simple I/O scheduler"
 	default y
@@ -82,9 +73,6 @@ choice
 	help
 	  Select the I/O scheduler which will be used by default for all
 	  block devices.
-
-	config DEFAULT_DEADLINE
-		bool "Deadline" if IOSCHED_DEADLINE=y
 
 	config DEFAULT_CFQ
 		bool "CFQ" if IOSCHED_CFQ=y
