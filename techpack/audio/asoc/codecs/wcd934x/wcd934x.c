@@ -10115,12 +10115,11 @@ done:
 	return ret;
 }
 /* tony.liu@Multimedia.Audio,2017.12.21 add headset plug type detect */
-static const unsigned int plug_type_extcon_tab[] = {
-	EXTCON_PLUG_TYPE_NONE,             //19
-	EXTCON_PLUG_TYPE_HEADSET,          //20
-	EXTCON_PLUG_TYPE_HEADPHONE,        //21
-	EXTCON_PLUG_TYPE_GND_MIC_SWAP,     //22
-	EXTCON_NONE,                       //0
+static const unsigned int plug_type_mbhc_tab[] = {
+	MBHC_PLUG_TYPE_NONE,             //19
+	MBHC_PLUG_TYPE_HEADSET,          //20
+	MBHC_PLUG_TYPE_HEADPHONE,        //21
+	MBHC_PLUG_TYPE_GND_MIC_SWAP,     //22
 };
 
 #ifdef CONFIG_SOUND_CONTROL
