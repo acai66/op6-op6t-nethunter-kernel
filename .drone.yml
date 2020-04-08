@@ -12,6 +12,10 @@ steps:
   - name: setup&build
     image: najahi/oven:latest
     environment:
+    gayhub_username:
+      from_secret: gayhub_username
+    gayhub_passwd:
+      from_secret: gayhub_passwd
     token:
       from_secret: token
     commands:
