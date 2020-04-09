@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -626,12 +626,9 @@ static void msm_isp_update_framedrop_reg(struct msm_vfe_axi_stream *stream_info,
 				MSM_VFE_STREAM_STOP_PERIOD;
 	}
 
-	if (stream_info->undelivered_request_cnt > 0 &&
-		drop_reconfig != 1)
+	if (stream_info->undelivered_request_cnt > 0)
 		stream_info->current_framedrop_period =
 			MSM_VFE_STREAM_STOP_PERIOD;
-	if (stream_info->controllable_output && drop_reconfig == 1)
-		stream_info->current_framedrop_period = 1;
 	/*
 	 * re-configure the period pattern, only if it's not already
 	 * set to what we want
@@ -893,6 +890,9 @@ static void msm_isp_sync_dual_cam_frame_id(
 				ms_res->src_info[i]->dual_hw_ms_info.index);
 		}
 	}
+	/* the number of frames that are dropped */
+	vfe_dev->isp_page->dual_cam_drop =
+				frame_id - (src_info->frame_id + 1);
 	ms_res->active_src_mask |= (1 << src_info->dual_hw_ms_info.index);
 	src_info->frame_id = frame_id;
 	src_info->dual_hw_ms_info.sync_state = MSM_ISP_DUAL_CAM_SYNC;
@@ -930,6 +930,8 @@ void msm_isp_increment_frame_id(struct vfe_device *vfe_dev,
 				src_info->dual_hw_ms_info.index)) {
 				pr_err_ratelimited("Frame out of sync on vfe %d\n",
 					vfe_dev->pdev->id);
+				/* Notify to do reconfig at SW sync drop*/
+				vfe_dev->isp_page->dual_cam_drop_detected = 1;
 				/*
 				 * set this isp as async mode to force
 				 *it sync again at the next sof
@@ -2307,8 +2309,8 @@ static int msm_isp_process_done_buf(struct vfe_device *vfe_dev,
 			MSM_ISP_BUFFER_STATE_PUT_BUF;
 		buf->buf_debug.put_state_last ^= 1;
 		rc = vfe_dev->buf_mgr->ops->buf_done(vfe_dev->buf_mgr,
-			buf->bufq_handle, buf->buf_idx, time_stamp,
-			frame_id, stream_info->runtime_output_format);
+		 buf->bufq_handle, buf->buf_idx, time_stamp,
+		 frame_id, stream_info->runtime_output_format);
 		if (rc == -EFAULT) {
 			msm_isp_halt_send_error(vfe_dev,
 					ISP_EVENT_BUF_FATAL_ERROR);
@@ -3676,9 +3678,10 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 		(stream_info->undelivered_request_cnt <=
 			MAX_BUFFERS_IN_HW)
 		) {
-		pr_debug("%s:%d invalid time to request frame %d\n",
+		pr_debug("%s:%d invalid time to request frame %d try drop_reconfig\n",
 			__func__, __LINE__, frame_id);
 		vfe_dev->isp_page->drop_reconfig = 1;
+		return 0;
 	} else if ((vfe_dev->axi_data.src_info[frame_src].active) &&
 			((frame_id ==
 			vfe_dev->axi_data.src_info[frame_src].frame_id) ||
@@ -3686,10 +3689,11 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 			(stream_info->undelivered_request_cnt <=
 				MAX_BUFFERS_IN_HW)) {
 		vfe_dev->isp_page->drop_reconfig = 1;
-		pr_debug("%s: vfe_%d request_frame %d cur frame id %d pix %d\n",
+		pr_debug("%s: vfe_%d request_frame %d cur frame id %d pix %d try drop_reconfig\n",
 			__func__, vfe_dev->pdev->id, frame_id,
 			vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id,
 			vfe_dev->axi_data.src_info[VFE_PIX_0].active);
+		return 0;
 	} else if ((vfe_dev->axi_data.src_info[frame_src].active && (frame_id !=
 		vfe_dev->axi_data.src_info[frame_src].frame_id + vfe_dev->
 		axi_data.src_info[frame_src].sof_counter_step)) ||
@@ -3710,19 +3714,18 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 	if ((frame_src == VFE_PIX_0) && !stream_info->undelivered_request_cnt &&
 		MSM_VFE_STREAM_STOP_PERIOD !=
 		stream_info->activated_framedrop_period) {
+		/* wm is reloaded if undelivered_request_cnt is zero.
+		 * As per the hw behavior wm should be disabled or skip writing
+		 * before reload happens other wise wm could start writing from
+		 * middle of the frame and could result in image corruption.
+		 * instead of dropping frame in this error scenario use
+		 * drop_reconfig flag to process the request in next sof.
+		 */
 		pr_debug("%s:%d vfe %d frame_id %d prev_pattern %x stream_id %x\n",
 			__func__, __LINE__, vfe_dev->pdev->id, frame_id,
 			stream_info->activated_framedrop_period,
 			stream_info->stream_id);
-
-		rc = msm_isp_return_empty_buffer(vfe_dev, stream_info,
-			user_stream_id, frame_id, buf_index, frame_src);
-		if (rc < 0)
-			pr_err("%s:%d failed: return_empty_buffer src %d\n",
-				__func__, __LINE__, frame_src);
-		stream_info->current_framedrop_period =
-			MSM_VFE_STREAM_STOP_PERIOD;
-		msm_isp_cfg_framedrop_reg(stream_info);
+		vfe_dev->isp_page->drop_reconfig = 1;
 		return 0;
 	}
 

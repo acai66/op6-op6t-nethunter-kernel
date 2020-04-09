@@ -1,4 +1,4 @@
-/* Copyright (c) 2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -51,6 +51,13 @@
 &i2c_4 {
 	asm330@6a {
 		reg = <0x6b>;
+		asm330-enable-gpio = <&tlmm 90 0x1>;
+	};
+};
+
+&spi_2 {
+	can-controller@0 {
+		qcom,max-can-channels = <2>;
 	};
 };
 
@@ -116,7 +123,7 @@
 				<&incall_record_tx>, <&incall_music_rx>,
 				<&dai_pri_tdm_rx_0>, <&dai_pri_tdm_tx_0>,
 				<&dai_sec_tdm_rx_0>, <&dai_sec_tdm_tx_0>,
-				<&dai_sec_auxpcm>;
+				<&dai_sec_auxpcm>, <&incall_music_dl_rx>;
 		asoc-cpu-names = "msm-dai-q6-auxpcm.1",
 				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
 				"msm-dai-stub-dev.4", "msm-dai-stub-dev.5",
@@ -127,7 +134,7 @@
 				"msm-dai-q6-dev.32772", "msm-dai-q6-dev.32773",
 				"msm-dai-q6-tdm.36864", "msm-dai-q6-tdm.36865",
 				"msm-dai-q6-tdm.36880", "msm-dai-q6-tdm.36881",
-				"msm-dai-q6-auxpcm.2";
+				"msm-dai-q6-auxpcm.2", "msm-dai-q6-dev.32774";
 		asoc-codec = <&tlv320aic3x_codec>, <&stub_codec>;
 		asoc-codec-names = "tlv320aic3x-codec", "msm-stub-codec.1";
 	};
@@ -145,6 +152,7 @@
 	/delete-property/ vreg_rgmii-supply;
 	pinctrl-names = "default";
 	pinctrl-0 = <&vreg_rgmii_off_default>;
+	qcom,phy-reset-delay-msecs = <10>;
 };
 
 &vreg_rgmii_io_pads {

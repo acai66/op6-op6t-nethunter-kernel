@@ -18,6 +18,8 @@
 
 #define IPA_DMA_SYNC                    1
 #define IPA_DMA_ASYNC                   0
+#define DMA_SYNC                    1
+#define DMA_ASYNC                   0
 
 enum cb_reason {
 	MHI_DEV_TRE_AVAILABLE = 0,
@@ -133,9 +135,11 @@ enum mhi_client_channel {
 	MHI_CLIENT_IP_HW_0_OUT = 100,
 	MHI_CLIENT_IP_HW_0_IN = 101,
 	MHI_CLIENT_ADPL_IN = 102,
-	MHI_CLIENT_RESERVED_2_LOWER = 103,
+	MHI_CLIENT_IP_HW_1_OUT = 105,
+	MHI_CLIENT_IP_HW_1_IN = 106,
+	MHI_CLIENT_RESERVED_2_LOWER = 107,
 	MHI_CLIENT_RESERVED_2_UPPER = 127,
-	MHI_MAX_CHANNELS = 103,
+	MHI_MAX_CHANNELS = 107,
 	MHI_CLIENT_INVALID = 0xFFFFFFFF
 };
 
@@ -195,6 +199,13 @@ int mhi_dev_write_channel(struct mhi_req *wreq);
 int mhi_dev_channel_isempty(struct mhi_dev_client *handle);
 
 /**
+* mhi_dev_channel_has_pending_write() - Checks if there are any pending writes
+*					to be completed on inbound channel
+* @handle_client:	Client Handle issued during mhi_dev_open_channel
+*/
+bool mhi_dev_channel_has_pending_write(struct mhi_dev_client *handle);
+
+/**
  * mhi_ctrl_state_info() - Provide MHI state info
  *		@idx: Channel number idx. Look at channel_state_info and
  *		pass the index for the corresponding channel.
@@ -243,6 +254,12 @@ static inline int mhi_dev_channel_isempty(struct mhi_dev_client *handle)
 {
 	return -EINVAL;
 };
+
+static inline bool mhi_dev_channel_has_pending_write
+	(struct mhi_dev_client *handle)
+{
+	return false;
+}
 
 static inline int mhi_ctrl_state_info(uint32_t idx, uint32_t *info)
 {

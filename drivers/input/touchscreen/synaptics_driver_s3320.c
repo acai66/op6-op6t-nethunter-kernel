@@ -1504,6 +1504,59 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 
     TPD_DEBUG("gesture suport LeftVee:%d RightVee:%d DouSwip:%d Circle:%d UpVee:%d DouTap:%d\n",\
         LeftVee_gesture,RightVee_gesture,DouSwip_gesture,Circle_gesture,UpVee_gesture,DouTap_gesture);
+
+#ifdef WAKE_GESTURES
+	if ((gesture == Down2UpSwip && s2w_switch & SWEEP_UP) ||
+		(gesture == Up2DownSwip && s2w_switch & SWEEP_DOWN) ||
+		(gesture == Right2LeftSwip && s2w_switch & SWEEP_LEFT) ||
+		(gesture == Left2RightSwip && s2w_switch & SWEEP_RIGHT) ||
+		(gesture == DouTap && dt2w_switch)) {
+
+		//wake gestures (requires app)
+		if (gestures_switch) {
+			int gest;
+			switch (gesture) {
+				case DouTap:
+					gest = 5;
+					break;
+				case Down2UpSwip:
+					gest = 3;
+					break;
+				case Up2DownSwip:
+					gest = 4;
+					break;
+				case Right2LeftSwip:
+					gest = 2;
+					break;
+				case Left2RightSwip:
+					gest = 1;
+					break;
+			}
+
+			input_report_rel(gesture_dev, WAKE_GESTURE, gest);
+			input_sync(gesture_dev);
+
+		//traditional s2w using userspace doubletap gesture from OnePlus (checks proximity sensor and vibrates)
+		} else if (DouTap_gesture) {
+			gesture = DouTap;
+			input_report_key(ts->input_dev, keyCode, 1);
+			input_sync(ts->input_dev);
+			input_report_key(ts->input_dev, keyCode, 0);
+			input_sync(ts->input_dev);
+
+			if (haptic_feedback_disable)
+				qpnp_hap_ignore_next_request();
+
+		//traditional s2w if gestures not enabled in OnePlus settings (only turns on screen)
+		} else {
+			input_report_key(ts->input_dev, KEY_POWER, 1);
+			input_sync(ts->input_dev);
+			input_report_key(ts->input_dev, KEY_POWER, 0);
+			input_sync(ts->input_dev);
+		}
+	} else
+#endif
+
 	if((gesture == DouTap && DouTap_gesture)||(gesture == RightVee && RightVee_gesture)\
 		||(gesture == LeftVee && LeftVee_gesture)||(gesture == UpVee && UpVee_gesture)\
 		||(gesture == Circle && Circle_gesture)||(gesture == DouSwip && DouSwip_gesture)\

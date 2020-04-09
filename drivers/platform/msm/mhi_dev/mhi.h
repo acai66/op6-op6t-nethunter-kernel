@@ -263,6 +263,7 @@ struct mhi_config {
 	uint32_t	mhi_reg_len;
 	uint32_t	version;
 	uint32_t	event_rings;
+	uint32_t	hw_event_rings;
 	uint32_t	channels;
 	uint32_t	chdb_offset;
 	uint32_t	erdb_offset;
@@ -460,7 +461,7 @@ struct mhi_dev_channel {
 	uint32_t			tre_bytes_left;
 	/* td size being read/written from/to so far */
 	uint32_t			td_size;
-	bool				wr_request_active;
+	uint32_t			pend_wr_count;
 	bool				skip_td;
 };
 

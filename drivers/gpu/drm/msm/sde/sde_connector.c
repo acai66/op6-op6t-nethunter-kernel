@@ -934,6 +934,28 @@ int sde_connector_clk_ctrl(struct drm_connector *connector, bool enable)
 	return rc;
 }
 
+bool sde_connector_mode_needs_full_range(struct drm_connector *connector)
+{
+	struct sde_connector *c_conn;
+
+	if (!connector) {
+		SDE_ERROR("invalid argument\n");
+		return false;
+	}
+
+	c_conn = to_sde_connector(connector);
+
+	if (!c_conn->display) {
+		SDE_ERROR("invalid argument\n");
+		return false;
+	}
+
+	if (!c_conn->ops.mode_needs_full_range)
+		return false;
+
+	return c_conn->ops.mode_needs_full_range(c_conn->display);
+}
+
 static void sde_connector_destroy(struct drm_connector *connector)
 {
 	struct sde_connector *c_conn;
@@ -1749,6 +1771,9 @@ static ssize_t _sde_debugfs_conn_cmd_tx_sts_read(struct file *file,
 		SDE_ERROR("snprintf failed, blen %d\n", blen);
 		return 0;
 	}
+
+	if (blen > count)
+		blen = count;
 
 	if (copy_to_user(buf, buffer, blen)) {
 		SDE_ERROR("copy to user buffer failed\n");

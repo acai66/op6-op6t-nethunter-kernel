@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -45,13 +45,16 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	CAM_DBG(CAM_CCI, "Base address %pK", base);
 
-	mutex_lock(&cci_dev->ref_count_mutex);
 	if (cci_dev->ref_count++) {
 		CAM_DBG(CAM_CCI, "ref_count %d", cci_dev->ref_count);
 		master = c_ctrl->cci_info->cci_i2c_master;
 		CAM_DBG(CAM_CCI, "master %d", master);
 		if (master < MASTER_MAX && master >= 0) {
 			mutex_lock(&cci_dev->cci_master_info[master].mutex);
+			mutex_lock(&cci_dev->
+				cci_master_info[master].mutex_q[QUEUE_0]);
+			mutex_lock(&cci_dev->
+				cci_master_info[master].mutex_q[QUEUE_1]);
 			flush_workqueue(cci_dev->write_wq[master]);
 			/* Re-initialize the completion */
 			reinit_completion(&cci_dev->
@@ -75,13 +78,15 @@ int cam_cci_init(struct v4l2_subdev *sd,
 				CCI_TIMEOUT);
 			if (rc <= 0)
 				CAM_ERR(CAM_CCI, "wait failed %d", rc);
+			mutex_unlock(&cci_dev->
+				cci_master_info[master].mutex_q[QUEUE_1]);
+			mutex_unlock(&cci_dev->
+				cci_master_info[master].mutex_q[QUEUE_0]);
 			mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		}
-		mutex_unlock(&cci_dev->ref_count_mutex);
 		return 0;
 	}
 
-	mutex_unlock(&cci_dev->ref_count_mutex);
 	ahb_vote.type = CAM_VOTE_ABSOLUTE;
 	ahb_vote.vote.level = CAM_SVS_VOTE;
 	axi_vote.compressed_bw = CAM_CPAS_DEFAULT_AXI_BW;
@@ -89,9 +94,9 @@ int cam_cci_init(struct v4l2_subdev *sd,
 
 	rc = cam_cpas_start(cci_dev->cpas_handle,
 		&ahb_vote, &axi_vote);
-	if (rc != 0) {
+	if (rc != 0)
 		CAM_ERR(CAM_CCI, "CPAS start failed");
-	}
+
 	cam_cci_get_clk_rates(cci_dev, c_ctrl);
 
 	/* Re-initialize the completion */
@@ -173,9 +178,7 @@ reset_complete_failed:
 	cam_soc_util_disable_platform_resource(soc_info, 1, 1);
 
 platform_enable_failed:
-	mutex_lock(&cci_dev->ref_count_mutex);
 	cci_dev->ref_count--;
-	mutex_unlock(&cci_dev->ref_count_mutex);
 	cam_cpas_stop(cci_dev->cpas_handle);
 
 	return rc;
@@ -207,6 +210,9 @@ static void cam_cci_init_cci_params(struct cci_device *new_cci_dev)
 				&new_cci_dev->cci_master_info[i].lock_q[j]);
 		}
 	}
+	mutex_init(&new_cci_dev->init_mutex);
+	new_cci_dev->cci_state = CCI_STATE_DISABLED;
+	spin_lock_init(&new_cci_dev->lock_status);
 }
 
 static void cam_cci_init_default_clk_params(struct cci_device *cci_dev,
@@ -372,19 +378,15 @@ int cam_cci_soc_release(struct cci_device *cci_dev)
 	struct cam_hw_soc_info *soc_info =
 		&cci_dev->soc_info;
 
-	mutex_lock(&cci_dev->ref_count_mutex);
 	if (!cci_dev->ref_count || cci_dev->cci_state != CCI_STATE_ENABLED) {
 		CAM_ERR(CAM_CCI, "invalid ref count %d / cci state %d",
 			cci_dev->ref_count, cci_dev->cci_state);
-		mutex_unlock(&cci_dev->ref_count_mutex);
 		return -EINVAL;
 	}
 	if (--cci_dev->ref_count) {
 		CAM_DBG(CAM_CCI, "ref_count Exit %d", cci_dev->ref_count);
-		mutex_unlock(&cci_dev->ref_count_mutex);
 		return 0;
 	}
-	mutex_unlock(&cci_dev->ref_count_mutex);
 
 	for (i = 0; i < MASTER_MAX; i++)
 		if (cci_dev->write_wq[i])

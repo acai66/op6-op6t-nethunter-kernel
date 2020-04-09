@@ -35,6 +35,8 @@ static u64 cfq_group_idle = NSEC_PER_SEC / 125;
 static const u64 cfq_target_latency = (u64)NSEC_PER_SEC * 3/10; /* 300 ms */
 static const int cfq_hist_divisor = 4;
 
+extern struct blkcg *blkcg_bg;
+
 /*
  * offset from end of queue service tree for idle class
  */
@@ -1682,6 +1684,13 @@ static void cfq_pd_init(struct blkg_policy_data *pd)
 	struct cfq_group *cfqg = pd_to_cfqg(pd);
 	struct cfq_group_data *cgd = blkcg_to_cfqgd(pd->blkg->blkcg);
 
+	if (pd->blkg->blkcg == &blkcg_root) {
+		cgd->weight = 1000;
+		cgd->group_idle = 2000 * NSEC_PER_USEC;
+		cgd->weight = 200;
+		cgd->group_idle = 0;
+	}
+
 	cfqg->weight = cgd->weight;
 	cfqg->leaf_weight = cgd->leaf_weight;
 	cfqg->group_idle = cgd->group_idle;
@@ -2834,9 +2843,11 @@ static struct cfq_queue *cfq_get_next_queue_forced(struct cfq_data *cfqd)
 	if (!cfqg)
 		return NULL;
 
-	for_each_cfqg_st(cfqg, i, j, st)
-		if ((cfqq = cfq_rb_first(st)) != NULL)
+	for_each_cfqg_st(cfqg, i, j, st) {
+		cfqq = cfq_rb_first(st);
+		if (cfqq)
 			return cfqq;
+}
 	return NULL;
 }
 

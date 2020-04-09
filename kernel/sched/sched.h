@@ -1350,7 +1350,7 @@ static __always_inline bool static_branch_##name(struct static_key *key) \
 extern struct static_key sched_feat_keys[__SCHED_FEAT_NR];
 #define sched_feat(x) (static_branch_##x(&sched_feat_keys[__SCHED_FEAT_##x]))
 #else /* !(SCHED_DEBUG && HAVE_JUMP_LABEL) */
-#define sched_feat(x) (sysctl_sched_features & (1UL << __SCHED_FEAT_##x))
+#define sched_feat(x) !!(sysctl_sched_features & (1UL << __SCHED_FEAT_##x))
 #endif /* SCHED_DEBUG && HAVE_JUMP_LABEL */
 
 extern struct static_key_false sched_numa_balancing;
@@ -1566,6 +1566,9 @@ struct sched_class {
 #ifdef CONFIG_SCHED_WALT
 	void (*fixup_walt_sched_stats)(struct rq *rq, struct task_struct *p,
 				      u32 new_task_load, u32 new_pred_demand);
+	void (*fixup_cumulative_runnable_avg)(struct rq *rq,
+					      struct task_struct *task,
+					      u64 new_task_load);
 #endif
 };
 
@@ -2974,4 +2977,14 @@ find_first_cpu_bit(struct task_struct *p, const cpumask_t *search_cpus,
 		   bool *do_rotate, struct find_first_cpu_bit_env *env);
 #else
 #define find_first_cpu_bit(...) -1
+#endif
+
+#ifdef CONFIG_SMP
+static inline void sched_irq_work_queue(struct irq_work *work)
+{
+	if (likely(cpu_online(raw_smp_processor_id())))
+		irq_work_queue(work);
+	else
+		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
+}
 #endif

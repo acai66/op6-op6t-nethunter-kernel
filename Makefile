@@ -1,6 +1,6 @@
 VERSION = 4
 PATCHLEVEL = 9
-SUBLEVEL = 217
+SUBLEVEL = 219
 EXTRAVERSION = -rc1
 NAME = Roaring Lionus
 
@@ -303,8 +303,13 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 
 HOSTCC       = gcc
 HOSTCXX      = g++
-HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer -std=gnu89
-HOSTCXXFLAGS = -O2
+HOSTCFLAGS   := -Wall -Wmissing-prototypes -Wstrict-prototypes -O3 -fomit-frame-pointer -std=gnu89
+HOSTCXXFLAGS = -O3
+
+ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
+HOSTCFLAGS  += -Wno-unused-value -Wno-unused-parameter \
+		-Wno-missing-field-initializers
+endif
 
 # Decide whether to build built-in, modular, or both.
 # Normally, just do built-in.
@@ -531,6 +536,7 @@ KBUILD_CFLAGS += $(call cc-disable-warning, undefined-optimized)
 KBUILD_CFLAGS += $(call cc-disable-warning, tautological-constant-out-of-range-compare)
 
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
+
 KBUILD_CFLAGS += $(call cc-disable-warning, tautological-compare)
 # CLANG uses a _MergedGlobals as optimization, but this breaks modpost, as the
 # source of a reference will be _MergedGlobals and not on of the whitelisted names.
@@ -543,6 +549,7 @@ KBUILD_CFLAGS	+= $(CLANG_FLAGS)
 KBUILD_AFLAGS	+= $(CLANG_FLAGS)
 else
 
+KBUILD_CFLAGS += $(call cc-option,-fno-delete-null-pointer-checks,)
 # These warnings generated too much noise in a regular build.
 # Use make W=1 to enable them (see scripts/Makefile.build)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
@@ -814,9 +821,19 @@ KBUILD_CFLAGS += $(stackp-flag)
 
 ifeq ($(cc-name),clang)
 KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
+KBUILD_CFLAGS += -mcpu=cortex-a55 -mtune=cortex-a55
+KBUILD_CFLAGS	+= $(call cc-option, -mllvm -polly) \
+		   $(call cc-option, -mllvm -polly-run-dce) \
+		   $(call cc-option, -mllvm -polly-run-inliner) \
+		   $(call cc-option, -mllvm -polly-opt-fusion=max) \
+		   $(call cc-option, -mllvm -polly-ast-use-context) \
+		   $(call cc-option, -mllvm -polly-detect-keep-going) \
+		   $(call cc-option, -mllvm -polly-vectorizer=stripmine) \
+		   $(call cc-option, -mllvm -polly-invariant-load-hoisting)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
 KBUILD_CFLAGS += $(call cc-disable-warning, duplicate-decl-specifier)
+KBUILD_CFLAGS += -mcpu=cortex-a55 -mtune=cortex-a55
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
 KBUILD_CFLAGS += $(call cc-disable-warning, tautological-compare)
 # CLANG uses a _MergedGlobals as optimization, but this breaks modpost, as the

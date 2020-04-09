@@ -1,0 +1,28 @@
+kind: pipeline
+name: hentai_ci
+
+platform:
+  os: linux
+  arch: amd64
+
+clone:
+  depth: 1
+
+steps:
+  - name: setup&build
+    image: najahi/oven:latest
+    environment:
+    gayhub_username:
+      from_secret: gayhub_username
+    gayhub_passwd:
+      from_secret: gayhub_passwd
+    token:
+      from_secret: token
+    commands:
+      - git clone https://github.com/boos4721/updater.git -b own build
+      - ./build/6.sh
+trigger:
+  branch:
+    - hentai-q
+  event:
+    - push

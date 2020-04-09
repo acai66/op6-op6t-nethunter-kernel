@@ -53,9 +53,10 @@ scm_version()
 			# If only the short version is requested, don't bother
 			# running further git commands
 			if $short; then
-				echo "+"
+				echo ""
 				return
 			fi
+		fi
 			# If we are past a tagged commit (like
 			# "v2.6.30-rc5-302-g72357d5"), we pretty print it.
 			if atag="`git describe 2>/dev/null`"; then
@@ -65,24 +66,14 @@ scm_version()
 			else
 				printf '%s%s' -g $head
 			fi
-		fi
+
+			# Avoid asking git for tag as it could be extremely slow.
+			# We print -g{commitish}.
+			printf '%s%s' -g $head
 
 		# Is this git on svn?
 		if git config --get svn-remote.svn.url >/dev/null; then
 			printf -- '-svn%s' "`git svn find-rev $head`"
-		fi
-
-		# Check for uncommitted changes.
-		# First, with git-status, but --no-optional-locks is only
-		# supported in git >= 2.14, so fall back to git-diff-index if
-		# it fails. Note that git-diff-index does not refresh the
-		# index, so it may give misleading results. See
-		# git-update-index(1), git-diff-index(1), and git-status(1).
-		if {
-			git --no-optional-locks status -uno --porcelain 2>/dev/null ||
-			git diff-index --name-only HEAD
-		} | grep -qvE '^(.. )?scripts/package'; then
-			printf '%s' -dirty
 		fi
 
 		# All done with git
@@ -162,7 +153,7 @@ if test ! "$srctree" -ef .; then
 fi
 
 # CONFIG_LOCALVERSION and LOCALVERSION (if set)
-res="${res}${CONFIG_LOCALVERSION}${LOCALVERSION}"
+res="${res}${CONFIG_LOCALVERSION}${LOCALVERSION}"-`date +%d`
 
 # scm version string if not at a tagged commit
 if test "$CONFIG_LOCALVERSION_AUTO" = "y"; then
