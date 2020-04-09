@@ -15,7 +15,8 @@ split_img=$home/split_img;
 # ui_print "<text>" [...]
 ui_print() {
   until [ ! "$1" ]; do
-    echo -e "ui_print $1\nui_print" > /proc/self/fd/$OUTFD;
+    echo -e "ui_print $1
+      ui_print" >> /proc/self/fd/$OUTFD;
     shift;
   done;
 }
@@ -524,15 +525,6 @@ replace_line() {
     sed -i "${line}s;.*;${3};" $1;
   fi;
 }
-
-replace_line_mod() {
-  while grep -q "$2" $1 
-  do
-    local line=$(grep -n "$2" $1 | head -n1 | cut -d: -f1);
-    sed -i "${line}s;.*;${3};" $1;
-  done
-}
-
 
 # remove_line <file> <line match string>
 remove_line() {
