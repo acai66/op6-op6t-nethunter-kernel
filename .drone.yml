@@ -18,6 +18,10 @@ steps:
         from_secret: sftp_username
       sftp_pwd:
         from_secret: sftp_pwd
+      id:
+        from_secret: id
+      ss:
+        from_secret: ss
     commands:
       - bash .drone
 trigger:

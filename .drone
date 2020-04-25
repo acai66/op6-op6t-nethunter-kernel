@@ -6,7 +6,7 @@
 export ARCH=arm64
 export SUBARCH=arm64
 export HOME=/drone
-export TZ=":Asia/Shanghai"
+export TZ=Asia/Shanghai
 
 ############################################################
 # Build Script Variables
@@ -19,7 +19,7 @@ DEVELOPER="boos"
 HOST="hentai"
 OUTFILE="/drone/src/out/arch/arm64/boot/Image.gz-dtb"
 CLANG="clang"
-DATA="`date +"%m%d-%H%S"`"
+DATE="`date +"%m%d-%H%S"`"
 QWQ="-j$(grep -c ^processor /proc/cpuinfo)"
 
 clean(){
@@ -33,8 +33,10 @@ config() {
 }
 
 clone() {
-    git clone --depth=1 https://github.com/Boos4721/clang.git $CLANG
-    git clone --depth=1 https://github.com/Boos4721/AnyKernel3.git ~/$ZIP
+    git config --global user.email 3.1415926535boos@gmail.com
+    git config --global user.name boos4721
+    git clone https://github.com/Boos4721/clang.git $CLANG
+    git clone https://github.com/Boos4721/AnyKernel3.git ~/$ZIP
     }
     
 compile() {
@@ -59,7 +61,10 @@ compile() {
 makezip() {
     cp -f $OUTFILE ~/$ZIP/
     cd ~/$ZIP
-    zip -r $NAME-$DATA.zip *
+    zip -r $NAME-$DATE.zip *
+}
+
+sf() {
     lftp <<EOF 
     set sftp:auto-confirm yes
     open sftp://${sftp_server}
@@ -68,9 +73,18 @@ makezip() {
     mput *.zip
     bye
 EOF
- 
     echo "Sftp uploading done!"
-    echo "All done!"
+}
+
+hub() {
+   mkdir -p ~/$NAME/$NAME && mv -f ~/$ZIP/*.zip ~/$NAME/$NAME/
+   cd  ~/$NAME
+   git init
+   git remote add origin https://$id:$ss@github.com/Boos4721/updater
+   git fetch origin && git pull origin
+   git checkout Kernel
+   git add . && git commit -sm "$DATE-CI "
+   git push -uf origin Kernel
 }
 
 config
@@ -78,6 +92,8 @@ clean
 clone
 compile
 makezip
+#sf
+hub
 
     DIFF=$(($BUILD_END - $BUILD_START))
     echo "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds"
