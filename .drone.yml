@@ -10,19 +10,20 @@ clone:
 
 steps:
   - name: setup&build
-    image: najahi/oven:latest
+    image: ubuntu:latest
     environment:
-    gayhub_username:
-      from_secret: gayhub_username
-    gayhub_passwd:
-      from_secret: gayhub_passwd
-    token:
-      from_secret: token
+      sftp_server:
+        from_secret: sftp_server
+      sftp_username:
+        from_secret: sftp_username
+      sftp_pwd:
+        from_secret: sftp_pwd
+      id:
+        from_secret: id
+      ss:
+        from_secret: ss
     commands:
-      - git clone https://github.com/boos4721/updater.git -b own build
-      - ./build/6.sh
+      - bash .drone
 trigger:
   branch:
     - hentai-q
-  event:
-    - push

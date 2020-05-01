@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+# Kernel CI Builder
+# Copyright (C) 2019 @Boos4721(Telegram and Github)  
+# Default Settings
+export ARCH=arm64
+export SUBARCH=arm64
+export HOME=/drone
+export TZ=Asia/Shanghai
+
+############################################################
+# Build Script Variables
+############################################################
+TOOLDIR="$PWD"
+NAME="HenTaiKernel"
+ZIP="AnyKernel3"
+CONFIG_FILE="hentai_defconfig"
+DEVELOPER="boos"
+HOST="hentai"
+OUTFILE="/drone/src/out/arch/arm64/boot/Image.gz-dtb"
+CLANG="clang"
+DATE="`date +"%m%d-%H%S"`"
+QWQ="-j$(grep -c ^processor /proc/cpuinfo)"
+
+clean(){
+    make mrproper
+    rm -rf ~/$ZIP
+}
+
+config() {
+       apt-get update
+       apt-get install -y build-essential bc python curl git zip ftp gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev lftp zstd wget libfl-dev gcc-aarch64-linux-gnu
+}
+
+clone() {
+    git config --global user.email 3.1415926535boos@gmail.com
+    git config --global user.name boos4721
+    git clone https://github.com/Boos4721/clang.git $CLANG
+    git clone https://github.com/Boos4721/AnyKernel3.git ~/$ZIP
+    }
+    
+compile() {
+    echo " $NAME With Clang.."
+    echo " $NAME Starting first build.."
+    BUILD_START=$(date +"%s")
+    export LD_LIBRARY_PATH="${TOOLDIR}/$CLANG/bin/../lib:$PATH" 
+    make ARCH=arm64 O="out" "${CONFIG_FILE}"
+    PATH="${TOOLDIR}/$CLANG/bin:${PATH}" \
+    make $QWQ O="out" \
+    ARCH=arm64 \
+    CC+=clang \
+    CLANG_TRIPLE+=aarch64-linux-gnu- \
+    CROSS_COMPILE+=aarch64-linux-gnu- \
+    CROSS_COMPILE_ARM32+=arm-linux-gnueabi- \
+    KBUILD_BUILD_USER="${DEVELOPER}" \
+    KBUILD_BUILD_HOST="${HOST}" 
+    echo " $NAME Build complete!"
+    BUILD_END=$(date +"%s")
+}
+
+makezip() {
+    cp -f $OUTFILE ~/$ZIP/
+    cd ~/$ZIP
+    zip -r $NAME-$DATE.zip *
+}
+
+sf() {
+    lftp <<EOF 
+    set sftp:auto-confirm yes
+    open sftp://${sftp_server}
+    user ${sftp_username} ${sftp_pwd}
+    cd /home/frs/project/boosroms/enchilada/Hentai_Kernel
+    mput *.zip
+    bye
+EOF
+    echo "Sftp uploading done!"
+}
+
+hub() {
+   mkdir -p ~/$NAME/$NAME && mv -f ~/$ZIP/*.zip ~/$NAME/$NAME/
+   cd  ~/$NAME
+   git init
+   git remote add origin https://$id:$ss@github.com/Boos4721/updater
+   git fetch origin && git pull origin
+   git checkout Kernel
+   git add . && git commit -sm "$DATE-CI "
+   git push -uf origin Kernel
+}
+
+config
+clean
+clone
+compile
+makezip
+#sf
+hub
+
+    DIFF=$(($BUILD_END - $BUILD_START))
+    echo "Build completed in $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds"
