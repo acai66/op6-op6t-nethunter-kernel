@@ -316,7 +316,7 @@ int adreno_ringbuffer_probe(struct adreno_device *adreno_dev, bool nopreempt)
 
 	if (!adreno_is_a3xx(adreno_dev)) {
 		status = kgsl_allocate_global(device, &device->scratch,
-				PAGE_SIZE, 0, KGSL_MEMDESC_RANDOM, "scratch");
+				PAGE_SIZE, 0, 0, "scratch");
 		if (status != 0)
 			return status;
 	}
@@ -1058,11 +1058,11 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	}
 
 	/*
-	 * Add IB1 to read the GPU ticks at the end of command obj and
+	 * Add cmds to read the GPU ticks at the end of command obj and
 	 * write it into the appropriate command obj profiling buffer offset
 	 */
 	if (user_profiling) {
-		cmds += set_user_profiling(adreno_dev, rb, cmds,
+		cmds += _get_alwayson_counter(adreno_dev, cmds,
 			cmdobj->profiling_buffer_gpuaddr +
 			offsetof(struct kgsl_drawobj_profiling_buffer,
 			gpu_ticks_retired));
