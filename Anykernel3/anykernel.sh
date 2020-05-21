@@ -109,7 +109,7 @@ install() {
 #if [ ! "$(grep /init.nethunter.rc $SYSTEM_ROOT/init.rc)" ]; then
 #  insert_after_last "$SYSTEM_ROOT/init.rc" "import .*\.rc" "import /init.nethunter.rc";
 #fi;
-#insert_line $SYSTEM_ROOT/init.rc "import /init.nethunter.rc" after "import .*\.rc" "import /init.nethunter.rc";
+insert_line $SYSTEM_ROOT/init.rc "import /init.nethunter.rc" after "import .*\.rc" "import /init.nethunter.rc";
 
 #if [ ! "$(grep /dev/hidg* $SYSTEM_ROOT/ueventd.rc)" ]; then
 #  insert_after_last "$SYSTEM_ROOT/ueventd.rc" "/dev/kgsl.*root.*root" "# HID driver\n/dev/hidg* 0666 root root";
