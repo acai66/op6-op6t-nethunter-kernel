@@ -6,7 +6,7 @@
 export ARCH=arm64
 export SUBARCH=arm64
 export HOME=/drone
-export TZ=Asia/Shanghai
+ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
 ############################################################
 # Build Script Variables
