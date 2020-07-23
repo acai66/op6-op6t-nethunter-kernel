@@ -3339,7 +3339,6 @@ long kgsl_ioctl_sparse_phys_alloc(struct kgsl_device_private *dev_priv,
 	struct kgsl_process_private *process = dev_priv->process_priv;
 	struct kgsl_device *device = dev_priv->device;
 	struct kgsl_sparse_phys_alloc *param = data;
-	struct kgsl_device *device = dev_priv->device;
 	struct kgsl_mem_entry *entry;
 	uint64_t flags;
 	int ret;
